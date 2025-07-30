@@ -15,13 +15,21 @@ export default function Landing() {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: { name: string; pin: string }) => {
-      return apiRequest("/api/login", {
+      const response = await fetch("/api/login", {
         method: "POST",
         body: JSON.stringify(credentials),
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
       });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Login failed");
+      }
+      
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });

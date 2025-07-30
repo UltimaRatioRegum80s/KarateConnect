@@ -7,10 +7,15 @@ import Header from "@/components/layout/header";
 import ChatRoomCard from "@/components/chat/chat-room-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import type { User, ChatRoom } from "@shared/schema";
 
 export default function Dashboard() {
   const { toast } = useToast();
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth() as { 
+    isAuthenticated: boolean; 
+    isLoading: boolean; 
+    user: User | undefined; 
+  };
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -30,7 +35,7 @@ export default function Dashboard() {
   const { data: chatRooms, isLoading: roomsLoading } = useQuery({
     queryKey: ["/api/chat-rooms"],
     enabled: isAuthenticated,
-  });
+  }) as { data: (ChatRoom & { memberCount: number; messageCount: number })[] | undefined; isLoading: boolean };
 
   const initializeRooms = async () => {
     try {

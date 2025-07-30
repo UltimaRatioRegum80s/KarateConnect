@@ -23,7 +23,7 @@ interface ChatInterfaceProps {
 }
 
 export default function ChatInterface({ roomId }: ChatInterfaceProps) {
-  const { user } = useAuth();
+  const { user } = useAuth() as { user: { id: string; name: string } | undefined };
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [socket, setSocket] = useState<WebSocket | null>(null);
@@ -33,7 +33,7 @@ export default function ChatInterface({ roomId }: ChatInterfaceProps) {
   const { data: initialMessages } = useQuery({
     queryKey: ["/api/chat-rooms", roomId, "messages"],
     enabled: !!roomId,
-  });
+  }) as { data: Message[] | undefined };
 
   useEffect(() => {
     if (initialMessages) {

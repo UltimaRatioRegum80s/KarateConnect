@@ -1,8 +1,9 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import type { User } from "@shared/schema";
 
 export default function Header() {
-  const { user } = useAuth();
+  const { user } = useAuth() as { user: User | undefined };
 
   const handleInstallApp = () => {
     // TODO: Implement PWA installation prompt
