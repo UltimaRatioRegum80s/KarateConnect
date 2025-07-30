@@ -26,15 +26,13 @@ export const sessions = pgTable(
 );
 
 // User storage table.
-// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
+  name: varchar("name").notNull(),
+  pin: varchar("pin").notNull(),
   role: varchar("role").default("member"), // member, admin, president
   title: varchar("title"), // President, Vice President, etc.
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -113,6 +111,12 @@ export const insertRoomMemberSchema = createInsertSchema(roomMembers).omit({
   joinedAt: true,
 });
 
+// Login schema
+export const loginSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  pin: z.string().min(4, "PIN must be at least 4 digits").max(6, "PIN must be at most 6 digits"),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -122,3 +126,4 @@ export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type RoomMember = typeof roomMembers.$inferSelect;
 export type InsertRoomMember = z.infer<typeof insertRoomMemberSchema>;
+export type LoginRequest = z.infer<typeof loginSchema>;

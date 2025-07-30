@@ -2,24 +2,14 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated } from "./auth";
 import { insertMessageSchema, insertChatRoomSchema, insertRoomMemberSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
+  // Auth routes are handled in setupAuth
 
   // Chat room routes
   app.get('/api/chat-rooms', isAuthenticated, async (req, res) => {
@@ -99,7 +89,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/chat-rooms/:roomId/join', isAuthenticated, async (req: any, res) => {
     try {
       const { roomId } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       
       const membership = await storage.addRoomMember({ roomId, userId });
       res.status(201).json(membership);
@@ -112,7 +102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/chat-rooms/:roomId/leave', isAuthenticated, async (req: any, res) => {
     try {
       const { roomId } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       
       await storage.removeRoomMember(roomId, userId);
       res.status(204).send();
@@ -122,9 +112,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Initialize default chat rooms
-  app.post('/api/initialize', isAuthenticated, async (req, res) => {
+  // Initialize default chat rooms and users
+  app.post('/api/initialize', async (req, res) => {
     try {
+      // Create default users
+      const defaultUsers = [
+        { name: "Admin President", pin: "1234", role: "president", title: "President" },
+        { name: "Vice President", pin: "5678", role: "admin", title: "Vice President" },
+        { name: "Secretary", pin: "9012", role: "admin", title: "Secretary" },
+        { name: "Treasurer", pin: "3456", role: "admin", title: "Treasurer" },
+        { name: "Technical Director", pin: "7890", role: "admin", title: "Technical Director" },
+      ];
+
+      for (const userData of defaultUsers) {
+        try {
+          await storage.createUser(userData);
+        } catch (error) {
+          // User might already exist, continue
+        }
+      }
+
+      // Create default chat rooms
       const defaultRooms = [
         { name: "Jnr Development champs", description: "Official Jnr Development champs discussion room for EXCO members" },
         { name: "UFAK", description: "Official UFAK discussion room for NKF EXCO members" },
@@ -141,10 +149,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.json({ message: "Default rooms initialized" });
+      res.json({ message: "Default users and rooms initialized" });
     } catch (error) {
-      console.error("Error initializing rooms:", error);
-      res.status(500).json({ message: "Failed to initialize rooms" });
+      console.error("Error initializing:", error);
+      res.status(500).json({ message: "Failed to initialize" });
     }
   });
 

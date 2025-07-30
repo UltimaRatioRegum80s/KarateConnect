@@ -13,9 +13,8 @@ interface Message {
   createdAt: string;
   user: {
     id: string;
-    firstName: string;
-    lastName: string;
-    profileImageUrl?: string;
+    name: string;
+    title?: string;
   };
 }
 
@@ -109,8 +108,13 @@ export default function ChatInterface({ roomId }: ChatInterfaceProps) {
     });
   };
 
-  const getInitials = (firstName?: string, lastName?: string) => {
-    return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase() || 'U';
+  const getInitials = (name?: string) => {
+    if (!name) return 'U';
+    const parts = name.split(' ');
+    if (parts.length >= 2) {
+      return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase();
+    }
+    return name.charAt(0).toUpperCase();
   };
 
   return (
@@ -128,15 +132,14 @@ export default function ChatInterface({ roomId }: ChatInterfaceProps) {
               {messages.map((message) => (
                 <div key={message.id} className="flex space-x-3">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={message.user.profileImageUrl} />
                     <AvatarFallback className="text-xs">
-                      {getInitials(message.user.firstName, message.user.lastName)}
+                      {getInitials(message.user.name)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
                     <div className="flex items-baseline space-x-2">
                       <span className="font-medium text-sm text-gray-900">
-                        {message.user.firstName} {message.user.lastName}
+                        {message.user.name}
                       </span>
                       <span className="text-xs text-gray-500">
                         {formatTime(message.createdAt)}

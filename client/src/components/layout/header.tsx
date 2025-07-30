@@ -9,9 +9,15 @@ export default function Header() {
     alert('Install app functionality would be implemented here');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (confirm('Are you sure you want to logout?')) {
-      window.location.href = "/api/logout";
+      try {
+        await fetch("/api/logout", { method: "POST", credentials: "include" });
+        window.location.reload();
+      } catch (error) {
+        console.error("Logout error:", error);
+        window.location.reload();
+      }
     }
   };
 
@@ -34,7 +40,7 @@ export default function Header() {
           <div className="flex items-center space-x-4">
             <div className="text-right">
               <div className="text-sm font-medium text-gray-900">
-                {user?.role === "president" ? "Admin President" : user?.firstName || "Admin"}
+                {user?.name || "Admin"}
               </div>
               <div className="text-xs text-red-600 font-medium">
                 {user?.title || "President"}
