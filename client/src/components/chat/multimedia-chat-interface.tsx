@@ -173,7 +173,7 @@ export default function MultimediaChatInterface({ roomId }: ChatInterfaceProps) 
     mutationFn: async (pollData: { question: string; options: string[]; allowMultiple: boolean }) => {
       return await apiRequest(`/api/chat-rooms/${roomId}/polls`, 'POST', pollData);
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({
           type: 'message',
@@ -182,6 +182,10 @@ export default function MultimediaChatInterface({ roomId }: ChatInterfaceProps) 
       }
       queryClient.invalidateQueries({ queryKey: ["/api/chat-rooms", roomId, "messages"] });
       setShowPollCreator(false);
+      toast({
+        title: "Poll created",
+        description: "Your poll has been created successfully",
+      });
     },
     onError: (error) => {
       toast({
