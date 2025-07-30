@@ -51,11 +51,36 @@ export const messages = pgTable("messages", {
   roomId: varchar("room_id").notNull().references(() => chatRooms.id, { onDelete: "cascade" }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
-  type: varchar("type", { enum: ["text", "voice", "image", "document"] }).notNull().default("text"),
+  type: varchar("type", { enum: ["text", "voice", "image", "document", "poll"] }).notNull().default("text"),
   fileName: varchar("file_name"),
   fileSize: integer("file_size"),
   mimeType: varchar("mime_type"),
   duration: integer("duration"), // for voice notes in seconds
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const polls = pgTable("polls", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  messageId: varchar("message_id").notNull().references(() => messages.id, { onDelete: "cascade" }),
+  question: text("question").notNull(),
+  allowMultiple: boolean("allow_multiple").default(false),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const pollOptions = pgTable("poll_options", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  pollId: varchar("poll_id").notNull().references(() => polls.id, { onDelete: "cascade" }),
+  text: text("text").notNull(),
+  orderIndex: integer("order_index").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const pollVotes = pgTable("poll_votes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  pollId: varchar("poll_id").notNull().references(() => polls.id, { onDelete: "cascade" }),
+  optionId: varchar("option_id").notNull().references(() => pollOptions.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -99,11 +124,58 @@ export const roomMembersRelations = relations(roomMembers, ({ one }) => ({
   }),
 }));
 
+export const pollsRelations = relations(polls, ({ one, many }) => ({
+  message: one(messages, {
+    fields: [polls.messageId],
+    references: [messages.id],
+  }),
+  options: many(pollOptions),
+  votes: many(pollVotes),
+}));
+
+export const pollOptionsRelations = relations(pollOptions, ({ one, many }) => ({
+  poll: one(polls, {
+    fields: [pollOptions.pollId],
+    references: [polls.id],
+  }),
+  votes: many(pollVotes),
+}));
+
+export const pollVotesRelations = relations(pollVotes, ({ one }) => ({
+  poll: one(polls, {
+    fields: [pollVotes.pollId],
+    references: [polls.id],
+  }),
+  option: one(pollOptions, {
+    fields: [pollVotes.optionId],
+    references: [pollOptions.id],
+  }),
+  user: one(users, {
+    fields: [pollVotes.userId],
+    references: [users.id],
+  }),
+}));
+
 // Schemas
 export const insertChatRoomSchema = createInsertSchema(chatRooms).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+});
+
+export const insertPollSchema = createInsertSchema(polls).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPollOptionSchema = createInsertSchema(pollOptions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPollVoteSchema = createInsertSchema(pollVotes).omit({
+  id: true,
+  createdAt: true,
 });
 
 export const insertMessageSchema = createInsertSchema(messages).omit({
@@ -132,3 +204,10 @@ export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type RoomMember = typeof roomMembers.$inferSelect;
 export type InsertRoomMember = z.infer<typeof insertRoomMemberSchema>;
 export type LoginRequest = z.infer<typeof loginSchema>;
+
+export type Poll = typeof polls.$inferSelect;
+export type InsertPoll = z.infer<typeof insertPollSchema>;
+export type PollOption = typeof pollOptions.$inferSelect;
+export type InsertPollOption = z.infer<typeof insertPollOptionSchema>;
+export type PollVote = typeof pollVotes.$inferSelect;
+export type InsertPollVote = z.infer<typeof insertPollVoteSchema>;

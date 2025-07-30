@@ -19,18 +19,33 @@ import {
   Pause, 
   Download,
   Paperclip,
-  X
+  X,
+  BarChart3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import PollComponent from "./poll-component";
+import PollCreator from "./poll-creator";
 
 interface Message {
   id: string;
   content: string;
-  type: "text" | "voice" | "image" | "document";
+  type: "text" | "voice" | "image" | "document" | "poll";
   fileName?: string;
   fileSize?: number;
   mimeType?: string;
   duration?: number;
+  poll?: {
+    id: string;
+    question: string;
+    allowMultiple: boolean;
+    isActive: boolean;
+    options: Array<{
+      id: string;
+      text: string;
+      voteCount: number;
+      userVotes: string[];
+    }>;
+  };
   createdAt: string;
   user: {
     id: string;
@@ -55,6 +70,7 @@ export default function MultimediaChatInterface({ roomId }: ChatInterfaceProps) 
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showPollCreator, setShowPollCreator] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -147,6 +163,30 @@ export default function MultimediaChatInterface({ roomId }: ChatInterfaceProps) 
       toast({
         title: "Error",
         description: "Failed to send message",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Create poll mutation
+  const createPollMutation = useMutation({
+    mutationFn: async (pollData: { question: string; options: string[]; allowMultiple: boolean }) => {
+      return await apiRequest(`/api/chat-rooms/${roomId}/polls`, 'POST', pollData);
+    },
+    onSuccess: (data) => {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+          type: 'message',
+          message: { ...data.message, poll: data.poll }
+        }));
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/chat-rooms", roomId, "messages"] });
+      setShowPollCreator(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to create poll",
         variant: "destructive",
       });
     },
@@ -354,6 +394,19 @@ export default function MultimediaChatInterface({ roomId }: ChatInterfaceProps) 
               </div>
             )}
             
+            {message.type === "poll" && message.poll && (
+              <div className="max-w-none w-full">
+                <PollComponent
+                  messageId={message.id}
+                  pollData={message.poll}
+                  createdAt={message.createdAt}
+                  userName={message.user.name}
+                  userTitle={message.user.title}
+                  isOwnMessage={isOwnMessage}
+                />
+              </div>
+            )}
+            
             <div className="text-xs mt-1 opacity-70">
               {new Date(message.createdAt).toLocaleTimeString()}
             </div>
@@ -400,6 +453,17 @@ export default function MultimediaChatInterface({ roomId }: ChatInterfaceProps) 
         </div>
       )}
 
+      {/* Poll Creator */}
+      {showPollCreator && (
+        <div className="p-4 border-t bg-gray-50 dark:bg-gray-800">
+          <PollCreator
+            onCreatePoll={(pollData) => createPollMutation.mutate(pollData)}
+            onCancel={() => setShowPollCreator(false)}
+            isCreating={createPollMutation.isPending}
+          />
+        </div>
+      )}
+
       {/* Input area */}
       <div className="p-4 border-t">
         <div className="flex items-center space-x-2">
@@ -437,6 +501,17 @@ export default function MultimediaChatInterface({ roomId }: ChatInterfaceProps) 
             className={cn(isRecording && "text-red-500")}
           >
             {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          </Button>
+          
+          {/* Poll creation */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowPollCreator(!showPollCreator)}
+            title="Create poll"
+            className={cn(showPollCreator && "text-green-500")}
+          >
+            <BarChart3 className="w-4 h-4" />
           </Button>
           
           {/* Send button */}

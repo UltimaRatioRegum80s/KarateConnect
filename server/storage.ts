@@ -3,6 +3,9 @@ import {
   chatRooms,
   messages,
   roomMembers,
+  polls,
+  pollOptions,
+  pollVotes,
   type User,
   type UpsertUser,
   type ChatRoom,
@@ -11,6 +14,12 @@ import {
   type InsertMessage,
   type RoomMember,
   type InsertRoomMember,
+  type Poll,
+  type InsertPoll,
+  type PollOption,
+  type InsertPollOption,
+  type PollVote,
+  type InsertPollVote,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sql } from "drizzle-orm";
@@ -91,8 +100,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Message operations
-  async getMessages(roomId: string, limit = 50): Promise<(Message & { user: User })[]> {
-    return await db
+  async getMessages(roomId: string, limit = 50): Promise<(Message & { user: User; poll?: any })[]> {
+    const messageResults = await db
       .select({
         id: messages.id,
         roomId: messages.roomId,
@@ -111,6 +120,26 @@ export class DatabaseStorage implements IStorage {
       .where(eq(messages.roomId, roomId))
       .orderBy(desc(messages.createdAt))
       .limit(limit);
+
+    // Fetch poll data for messages that are polls
+    const messagesWithPolls = await Promise.all(
+      messageResults.map(async (message) => {
+        if (message.type === 'poll') {
+          const [poll] = await db
+            .select()
+            .from(polls)
+            .where(eq(polls.messageId, message.id));
+          
+          if (poll) {
+            const pollWithOptions = await this.getPollWithOptions(poll.id);
+            return { ...message, poll: pollWithOptions };
+          }
+        }
+        return message;
+      })
+    );
+
+    return messagesWithPolls;
   }
 
   async getMessage(messageId: string): Promise<Message | undefined> {
@@ -158,6 +187,90 @@ export class DatabaseStorage implements IStorage {
       .delete(roomMembers)
       .where(
         sql`${roomMembers.roomId} = ${roomId} AND ${roomMembers.userId} = ${userId}`
+      );
+  }
+
+  // Poll operations
+  async createPoll(poll: InsertPoll): Promise<Poll> {
+    const [newPoll] = await db
+      .insert(polls)
+      .values(poll)
+      .returning();
+    return newPoll;
+  }
+
+  async createPollOptions(options: InsertPollOption[]): Promise<PollOption[]> {
+    const newOptions = await db
+      .insert(pollOptions)
+      .values(options)
+      .returning();
+    return newOptions;
+  }
+
+  async getPollWithOptions(pollId: string): Promise<(Poll & { options: (PollOption & { voteCount: number; userVotes: string[] })[] }) | null> {
+    const [poll] = await db
+      .select()
+      .from(polls)
+      .where(eq(polls.id, pollId));
+
+    if (!poll) return null;
+
+    const options = await db
+      .select({
+        id: pollOptions.id,
+        pollId: pollOptions.pollId,
+        text: pollOptions.text,
+        orderIndex: pollOptions.orderIndex,
+        createdAt: pollOptions.createdAt,
+        voteCount: count(pollVotes.id),
+        userVotes: sql<string[]>`array_agg(${pollVotes.userId})`.mapWith((value) => 
+          value ? value.filter(Boolean) : []
+        ),
+      })
+      .from(pollOptions)
+      .leftJoin(pollVotes, eq(pollOptions.id, pollVotes.optionId))
+      .where(eq(pollOptions.pollId, pollId))
+      .groupBy(pollOptions.id, pollOptions.pollId, pollOptions.text, pollOptions.orderIndex, pollOptions.createdAt)
+      .orderBy(pollOptions.orderIndex);
+
+    return {
+      ...poll,
+      options: options.map(option => ({
+        ...option,
+        voteCount: Number(option.voteCount),
+        userVotes: option.userVotes || [],
+      })),
+    };
+  }
+
+  async votePoll(vote: InsertPollVote): Promise<PollVote> {
+    // First check if poll allows multiple votes
+    const [poll] = await db
+      .select()
+      .from(polls)
+      .where(eq(polls.id, vote.pollId));
+
+    if (!poll?.allowMultiple) {
+      // Remove existing votes for this user and poll
+      await db
+        .delete(pollVotes)
+        .where(sql`${pollVotes.pollId} = ${vote.pollId} AND ${pollVotes.userId} = ${vote.userId}`);
+    }
+
+    const [newVote] = await db
+      .insert(pollVotes)
+      .values(vote)
+      .onConflictDoNothing()
+      .returning();
+    
+    return newVote;
+  }
+
+  async removePollVote(pollId: string, optionId: string, userId: string): Promise<void> {
+    await db
+      .delete(pollVotes)
+      .where(
+        sql`${pollVotes.pollId} = ${pollId} AND ${pollVotes.optionId} = ${optionId} AND ${pollVotes.userId} = ${userId}`
       );
   }
 

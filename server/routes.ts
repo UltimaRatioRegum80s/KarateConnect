@@ -150,6 +150,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Poll creation endpoint
+  app.post('/api/chat-rooms/:roomId/polls', isAuthenticated, async (req: any, res) => {
+    try {
+      const { roomId } = req.params;
+      const userId = req.session.userId;
+      const { question, options, allowMultiple = false } = req.body;
+
+      if (!question || !options || !Array.isArray(options) || options.length < 2) {
+        return res.status(400).json({ message: "Poll must have a question and at least 2 options" });
+      }
+
+      // Create the poll message first
+      const messageData = {
+        roomId,
+        userId,
+        content: question,
+        type: 'poll' as const,
+      };
+
+      const message = await storage.createMessage(messageData);
+
+      // Create the poll
+      const pollData = {
+        messageId: message.id,
+        question,
+        allowMultiple,
+      };
+
+      const poll = await storage.createPoll(pollData);
+
+      // Create poll options
+      const optionData = options.map((text: string, index: number) => ({
+        pollId: poll.id,
+        text: text.trim(),
+        orderIndex: index,
+      }));
+
+      await storage.createPollOptions(optionData);
+
+      // Return the complete poll with options
+      const completePoll = await storage.getPollWithOptions(poll.id);
+
+      res.status(201).json({
+        message,
+        poll: completePoll,
+      });
+    } catch (error) {
+      console.error("Error creating poll:", error);
+      res.status(500).json({ message: "Failed to create poll" });
+    }
+  });
+
+  // Get poll with voting data
+  app.get('/api/polls/:pollId', isAuthenticated, async (req, res) => {
+    try {
+      const { pollId } = req.params;
+      const poll = await storage.getPollWithOptions(pollId);
+      
+      if (!poll) {
+        return res.status(404).json({ message: "Poll not found" });
+      }
+
+      res.json(poll);
+    } catch (error) {
+      console.error("Error fetching poll:", error);
+      res.status(500).json({ message: "Failed to fetch poll" });
+    }
+  });
+
+  // Vote on poll
+  app.post('/api/polls/:pollId/vote', isAuthenticated, async (req: any, res) => {
+    try {
+      const { pollId } = req.params;
+      const userId = req.session.userId;
+      const { optionId } = req.body;
+
+      if (!optionId) {
+        return res.status(400).json({ message: "Option ID is required" });
+      }
+
+      const vote = await storage.votePoll({
+        pollId,
+        optionId,
+        userId,
+      });
+
+      // Return updated poll data
+      const updatedPoll = await storage.getPollWithOptions(pollId);
+      res.json(updatedPoll);
+    } catch (error) {
+      console.error("Error voting on poll:", error);
+      res.status(500).json({ message: "Failed to vote on poll" });
+    }
+  });
+
+  // Remove vote from poll
+  app.delete('/api/polls/:pollId/vote/:optionId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { pollId, optionId } = req.params;
+      const userId = req.session.userId;
+
+      await storage.removePollVote(pollId, optionId, userId);
+
+      // Return updated poll data
+      const updatedPoll = await storage.getPollWithOptions(pollId);
+      res.json(updatedPoll);
+    } catch (error) {
+      console.error("Error removing vote:", error);
+      res.status(500).json({ message: "Failed to remove vote" });
+    }
+  });
+
   // File serving endpoint
   app.get('/api/files/:messageId', isAuthenticated, async (req, res) => {
     try {
