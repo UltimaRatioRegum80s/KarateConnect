@@ -4,6 +4,45 @@ import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./auth";
 import { insertMessageSchema, insertChatRoomSchema, insertRoomMemberSchema } from "@shared/schema";
+import multer from "multer";
+import path from "path";
+import fs from "fs/promises";
+
+// Configure multer for file uploads
+const storage_config = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    try {
+      await fs.mkdir(uploadsDir, { recursive: true });
+      cb(null, uploadsDir);
+    } catch (error) {
+      cb(error as Error, uploadsDir);
+    }
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage_config,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow images, documents, and audio files
+    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|txt|webm|mp3|wav|ogg/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Error: File type not supported'));
+    }
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -71,6 +110,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  // Enhanced message creation endpoint with file upload
+  app.post('/api/chat-rooms/:roomId/messages', isAuthenticated, upload.single('file'), async (req: any, res) => {
+    try {
+      const { roomId } = req.params;
+      const userId = req.session.userId;
+      const { content, type = 'text', duration } = req.body;
+
+      const messageData: any = {
+        roomId,
+        userId,
+        content,
+        type,
+      };
+
+      // Handle file upload
+      if (req.file) {
+        messageData.fileName = req.file.originalname;
+        messageData.fileSize = req.file.size;
+        messageData.mimeType = req.file.mimetype;
+        
+        // Store file path in content for later retrieval
+        messageData.content = req.file.filename;
+      }
+
+      // Handle voice message duration
+      if (duration) {
+        messageData.duration = parseInt(duration);
+      }
+
+      const message = await storage.createMessage(messageData);
+      res.status(201).json(message);
+    } catch (error) {
+      console.error("Error creating message:", error);
+      res.status(500).json({ message: "Failed to create message" });
+    }
+  });
+
+  // File serving endpoint
+  app.get('/api/files/:messageId', isAuthenticated, async (req, res) => {
+    try {
+      const { messageId } = req.params;
+      const message = await storage.getMessage(messageId);
+      
+      if (!message || message.type === 'text') {
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      const filePath = path.join(process.cwd(), 'uploads', message.content);
+      
+      try {
+        await fs.access(filePath);
+        
+        // Set appropriate content type
+        if (message.mimeType) {
+          res.setHeader('Content-Type', message.mimeType);
+        }
+        
+        // Set content disposition for downloads
+        if (message.type === 'document') {
+          res.setHeader('Content-Disposition', `attachment; filename="${message.fileName}"`);
+        }
+
+        res.sendFile(filePath);
+      } catch (error) {
+        res.status(404).json({ message: "File not found" });
+      }
+    } catch (error) {
+      console.error("Error serving file:", error);
+      res.status(500).json({ message: "Failed to serve file" });
     }
   });
 

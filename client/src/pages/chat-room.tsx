@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/layout/header";
-import ChatInterface from "@/components/chat/chat-interface";
+import MultimediaChatInterface from "@/components/chat/multimedia-chat-interface";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
@@ -32,7 +32,7 @@ export default function ChatRoom() {
   const { data: room, isLoading: roomLoading } = useQuery({
     queryKey: ["/api/chat-rooms", roomId],
     enabled: isAuthenticated && !!roomId,
-  });
+  }) as { data: { name: string; description?: string } | undefined; isLoading: boolean };
 
   if (isLoading || roomLoading) {
     return (
@@ -94,7 +94,7 @@ export default function ChatRoom() {
           </div>
         </div>
 
-        <ChatInterface roomId={roomId!} />
+        <MultimediaChatInterface roomId={roomId!} />
       </main>
     </div>
   );

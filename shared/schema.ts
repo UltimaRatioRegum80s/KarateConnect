@@ -51,6 +51,11 @@ export const messages = pgTable("messages", {
   roomId: varchar("room_id").notNull().references(() => chatRooms.id, { onDelete: "cascade" }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
+  type: varchar("type", { enum: ["text", "voice", "image", "document"] }).notNull().default("text"),
+  fileName: varchar("file_name"),
+  fileSize: integer("file_size"),
+  mimeType: varchar("mime_type"),
+  duration: integer("duration"), // for voice notes in seconds
   createdAt: timestamp("created_at").defaultNow(),
 });
 

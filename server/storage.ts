@@ -98,6 +98,11 @@ export class DatabaseStorage implements IStorage {
         roomId: messages.roomId,
         userId: messages.userId,
         content: messages.content,
+        type: messages.type,
+        fileName: messages.fileName,
+        fileSize: messages.fileSize,
+        mimeType: messages.mimeType,
+        duration: messages.duration,
         createdAt: messages.createdAt,
         user: users,
       })
@@ -106,6 +111,14 @@ export class DatabaseStorage implements IStorage {
       .where(eq(messages.roomId, roomId))
       .orderBy(desc(messages.createdAt))
       .limit(limit);
+  }
+
+  async getMessage(messageId: string): Promise<Message | undefined> {
+    const [message] = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.id, messageId));
+    return message || undefined;
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
