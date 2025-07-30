@@ -45,6 +45,13 @@ export interface IStorage {
   addRoomMember(membership: InsertRoomMember): Promise<RoomMember>;
   removeRoomMember(roomId: string, userId: string): Promise<void>;
   
+  // Poll operations
+  createPoll(poll: InsertPoll): Promise<Poll>;
+  createPollOptions(options: InsertPollOption[]): Promise<PollOption[]>;
+  getPollWithOptions(pollId: string): Promise<(Poll & { options: (PollOption & { voteCount: number; userVotes: string[] })[] }) | null>;
+  votePoll(vote: InsertPollVote): Promise<PollVote>;
+  removePollVote(pollId: string, optionId: string, userId: string): Promise<void>;
+
   // Statistics
   getRoomStats(roomId: string): Promise<{ memberCount: number; messageCount: number }>;
   getUserStats(userId: string): Promise<{ roomCount: number; messageCount: number }>;
@@ -79,7 +86,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(chatRooms)
-      .where(eq(chatRooms.isActive, true))
+      .where(eq(chatRooms.is_active, true))
       .orderBy(chatRooms.name);
   }
 

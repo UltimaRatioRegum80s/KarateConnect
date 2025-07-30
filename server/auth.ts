@@ -43,7 +43,7 @@ export async function setupAuth(app: Express) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      if (!user.isActive) {
+      if (!user.is_active) {
         return res.status(401).json({ message: "Account is inactive" });
       }
 
@@ -93,7 +93,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   // Verify user still exists and is active
   try {
     const user = await storage.getUser(session.userId);
-    if (!user || !user.isActive) {
+    if (!user || !user.is_active) {
       return res.status(401).json({ message: "Unauthorized" });
     }
     

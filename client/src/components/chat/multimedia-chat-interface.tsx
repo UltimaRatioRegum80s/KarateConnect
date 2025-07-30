@@ -38,7 +38,7 @@ interface Message {
     id: string;
     question: string;
     allowMultiple: boolean;
-    isActive: boolean;
+    is_active: boolean;
     options: Array<{
       id: string;
       text: string;

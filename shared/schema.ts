@@ -32,7 +32,7 @@ export const users = pgTable("users", {
   pin: varchar("pin").notNull(),
   role: varchar("role").default("member"), // member, admin, president
   title: varchar("title"), // President, Vice President, etc.
-  isActive: boolean("is_active").default(true),
+  is_active: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -41,7 +41,7 @@ export const chatRooms = pgTable("chat_rooms", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: varchar("name").notNull(),
   description: text("description"),
-  isActive: boolean("is_active").default(true),
+  is_active: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -64,7 +64,7 @@ export const polls = pgTable("polls", {
   messageId: varchar("message_id").notNull().references(() => messages.id, { onDelete: "cascade" }),
   question: text("question").notNull(),
   allowMultiple: boolean("allow_multiple").default(false),
-  isActive: boolean("is_active").default(true),
+  is_active: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

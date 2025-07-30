@@ -20,7 +20,7 @@ interface Poll {
   id: string;
   question: string;
   allowMultiple: boolean;
-  isActive: boolean;
+  is_active: boolean;
   options: PollOption[];
 }
 
@@ -152,7 +152,7 @@ export default function PollComponent({ messageId, pollData, createdAt, userName
                 <Button
                   variant="ghost"
                   onClick={() => handleVote(option.id)}
-                  disabled={voteMutation.isPending || removeVoteMutation.isPending || !currentPoll.isActive}
+                  disabled={voteMutation.isPending || removeVoteMutation.isPending || !currentPoll.is_active}
                   className={cn(
                     "w-full justify-start h-auto p-3 relative overflow-hidden",
                     hasVoted && "bg-green-100 dark:bg-green-900/20 border-green-200 dark:border-green-800"
