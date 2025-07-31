@@ -126,6 +126,38 @@ export const bankTransactions = pgTable("bank_transactions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Calendar events table
+export const calendarEvents = pgTable("calendar_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  description: varchar("description"),
+  eventType: varchar("event_type").notNull(), // "competition", "training", "meeting", "deadline"
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  location: varchar("location"),
+  isAllDay: varchar("is_all_day").default("false"),
+  source: varchar("source").default("manual"), // "manual", "document"
+  documentName: varchar("document_name"), // Name of uploaded document
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Calendar documents table for PDF/Word uploads
+export const calendarDocuments = pgTable("calendar_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fileName: varchar("file_name").notNull(),
+  originalName: varchar("original_name").notNull(),
+  fileSize: varchar("file_size").notNull(),
+  mimeType: varchar("mime_type").notNull(),
+  status: varchar("status").notNull().default("processing"), // "processing", "processed", "failed"
+  extractedEventsCount: varchar("extracted_events_count").default("0"),
+  processingNotes: varchar("processing_notes"),
+  uploadedBy: varchar("uploaded_by").notNull(),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  processedAt: timestamp("processed_at"),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   messages: many(messages),
@@ -223,6 +255,18 @@ export const insertRoomMemberSchema = createInsertSchema(roomMembers).omit({
   joinedAt: true,
 });
 
+export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCalendarDocumentSchema = createInsertSchema(calendarDocuments).omit({
+  id: true,
+  uploadedAt: true,
+  processedAt: true,
+});
+
 // Login schema
 export const loginSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -232,6 +276,10 @@ export const loginSchema = z.object({
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+export type CalendarEvent = typeof calendarEvents.$inferSelect;
+export type InsertCalendarEvent = typeof calendarEvents.$inferInsert;
+export type CalendarDocument = typeof calendarDocuments.$inferSelect;
+export type InsertCalendarDocument = typeof calendarDocuments.$inferInsert;
 
 // Financial Overview Tables
 export const financialEntries = pgTable("financial_entries", {

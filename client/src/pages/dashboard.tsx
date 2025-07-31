@@ -8,7 +8,7 @@ import ChatRoomCard from "@/components/chat/chat-room-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { MessageSquare, DollarSign, FileText } from "lucide-react";
+import { MessageSquare, DollarSign, FileText, Calendar } from "lucide-react";
 import { Link } from "wouter";
 import type { User, ChatRoom } from "@shared/schema";
 
@@ -123,6 +123,25 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <Link href="/financial">
+                  <Button variant="outline">View</Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                    <Calendar className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">NKF Calendar</h3>
+                    <p className="text-sm text-muted-foreground">View events and competitions</p>
+                  </div>
+                </div>
+                <Link href="/calendar">
                   <Button variant="outline">View</Button>
                 </Link>
               </div>

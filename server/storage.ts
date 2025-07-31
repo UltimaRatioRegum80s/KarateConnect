@@ -10,6 +10,8 @@ import {
   financialSummary,
   bankStatements,
   bankTransactions,
+  calendarEvents,
+  calendarDocuments,
   type User,
   type UpsertUser,
   type ChatRoom,
@@ -32,9 +34,13 @@ import {
   type InsertBankStatement,
   type BankTransaction,
   type InsertBankTransaction,
+  type CalendarEvent,
+  type InsertCalendarEvent,
+  type CalendarDocument,
+  type InsertCalendarDocument,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, count, sql } from "drizzle-orm";
+import { eq, desc, count, sql, and, gte, lte } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -70,6 +76,16 @@ export interface IStorage {
   createFinancialEntry(entry: InsertFinancialEntry): Promise<FinancialEntry>;
   updateFinancialSummary(summary: InsertFinancialSummary): Promise<FinancialSummary>;
   deleteFinancialEntry(id: string): Promise<void>;
+
+  // Calendar operations
+  getCalendarEvents(year?: number, month?: number): Promise<CalendarEvent[]>;
+  createCalendarEvent(data: InsertCalendarEvent): Promise<CalendarEvent>;
+  updateCalendarEvent(id: string, data: Partial<InsertCalendarEvent>): Promise<CalendarEvent>;
+  deleteCalendarEvent(id: string): Promise<void>;
+  
+  getCalendarDocuments(): Promise<CalendarDocument[]>;
+  createCalendarDocument(data: InsertCalendarDocument): Promise<CalendarDocument>;
+  updateCalendarDocument(id: string, data: Partial<InsertCalendarDocument>): Promise<CalendarDocument>;
 
   // Statistics
   getRoomStats(roomId: string): Promise<{ memberCount: number; messageCount: number }>;
@@ -347,6 +363,69 @@ export class DatabaseStorage implements IStorage {
 
   async deleteFinancialEntry(id: string): Promise<void> {
     await db.delete(financialEntries).where(eq(financialEntries.id, id));
+  }
+
+  // Calendar operations
+  async getCalendarEvents(year?: number, month?: number): Promise<CalendarEvent[]> {
+    let query = db.select().from(calendarEvents);
+    
+    if (year && month) {
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0);
+      query = query.where(
+        and(
+          gte(calendarEvents.startDate, startDate),
+          lte(calendarEvents.startDate, endDate)
+        )
+      ) as any;
+    } else if (year) {
+      const startDate = new Date(year, 0, 1);
+      const endDate = new Date(year, 11, 31);
+      query = query.where(
+        and(
+          gte(calendarEvents.startDate, startDate),
+          lte(calendarEvents.startDate, endDate)
+        )
+      ) as any;
+    }
+    
+    return await query.orderBy(calendarEvents.startDate);
+  }
+
+  async createCalendarEvent(data: InsertCalendarEvent): Promise<CalendarEvent> {
+    const [event] = await db.insert(calendarEvents).values(data).returning();
+    return event;
+  }
+
+  async updateCalendarEvent(id: string, data: Partial<InsertCalendarEvent>): Promise<CalendarEvent> {
+    const [event] = await db
+      .update(calendarEvents)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(calendarEvents.id, id))
+      .returning();
+    return event;
+  }
+
+  async deleteCalendarEvent(id: string): Promise<void> {
+    await db.delete(calendarEvents).where(eq(calendarEvents.id, id));
+  }
+
+  async getCalendarDocuments(): Promise<CalendarDocument[]> {
+    return await db.select().from(calendarDocuments).orderBy(desc(calendarDocuments.uploadedAt));
+  }
+
+  async createCalendarDocument(data: InsertCalendarDocument): Promise<CalendarDocument> {
+    const [document] = await db.insert(calendarDocuments).values(data).returning();
+    return document;
+  }
+
+  async updateCalendarDocument(id: string, data: Partial<InsertCalendarDocument>): Promise<CalendarDocument> {
+    const [document] = await db
+      .update(calendarDocuments)
+      .set(data)
+      .where(eq(calendarDocuments.id, id))
+      .returning();
+    return document;
   }
 
   // Statistics

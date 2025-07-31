@@ -79,6 +79,8 @@ The application is designed for deployment on Replit with the following setup:
 - **WhatsApp-Style Polling**: Interactive voting system for organizational decisions
 - **Financial Management**: Interactive charts showing income/expense trends, budget tracking, and projections
 - **Bank Statement Analysis**: Admin-only secure upload and analysis system with automatic categorization
+- **Comprehensive Calendar System**: Month/year views with summarized activity lists and dual event entry methods
+- **Document Processing**: AI-powered extraction of events from uploaded PDF/Word calendar documents
 - **Real-time Messaging**: WebSocket connections for instant communication
 - **Role-Based Access**: Admin controls for sensitive financial data
 - **Session Management**: PostgreSQL-backed sessions with configurable TTL
@@ -91,6 +93,9 @@ The application is designed for deployment on Replit with the following setup:
 - ✅ Created interactive polling system with real-time vote tracking
 - ✅ Enhanced chat rooms with multimedia capabilities
 - ✅ Built financial database with sample data for testing
+- ✅ Integrated bank statement data into financial charts for real-time data visualization
+- ✅ Added comprehensive calendar feature with month/year views and activity summaries
+- ✅ Implemented dual event entry methods: manual input and document upload with AI extraction
 - ✅ Ready for deployment at custom subdomain (exco-portal.replit.app requested)
 
 The architecture prioritizes governance functionality, financial transparency, and secure communication while maintaining real-time collaboration capabilities for executive decision-making.

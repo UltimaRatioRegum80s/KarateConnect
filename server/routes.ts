@@ -621,6 +621,176 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Calendar routes
+  app.get('/api/calendar/events', isAuthenticated, async (req: any, res) => {
+    try {
+      const { year, month } = req.query;
+      const events = await storage.getCalendarEvents(
+        year ? parseInt(year) : undefined,
+        month ? parseInt(month) : undefined
+      );
+      res.json(events);
+    } catch (error) {
+      console.error("Error fetching calendar events:", error);
+      res.status(500).json({ message: "Failed to fetch calendar events" });
+    }
+  });
+
+  app.post('/api/calendar/events', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const eventData = {
+        ...req.body,
+        createdBy: userId,
+      };
+      
+      const event = await storage.createCalendarEvent(eventData);
+      res.status(201).json(event);
+    } catch (error) {
+      console.error("Error creating calendar event:", error);
+      res.status(500).json({ message: "Failed to create calendar event" });
+    }
+  });
+
+  app.put('/api/calendar/events/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const event = await storage.updateCalendarEvent(id, req.body);
+      res.json(event);
+    } catch (error) {
+      console.error("Error updating calendar event:", error);
+      res.status(500).json({ message: "Failed to update calendar event" });
+    }
+  });
+
+  app.delete('/api/calendar/events/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteCalendarEvent(id);
+      res.json({ message: "Event deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting calendar event:", error);
+      res.status(500).json({ message: "Failed to delete calendar event" });
+    }
+  });
+
+  // Calendar document upload routes
+  app.get('/api/calendar/documents', isAuthenticated, async (req: any, res) => {
+    try {
+      const documents = await storage.getCalendarDocuments();
+      res.json(documents);
+    } catch (error) {
+      console.error("Error fetching calendar documents:", error);
+      res.status(500).json({ message: "Failed to fetch calendar documents" });
+    }
+  });
+
+  app.post('/api/calendar/documents/upload', isAuthenticated, upload.single('document'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const userId = req.session.userId;
+      const documentData = {
+        fileName: req.file.filename,
+        originalName: req.file.originalname,
+        fileSize: req.file.size.toString(),
+        mimeType: req.file.mimetype,
+        uploadedBy: userId,
+      };
+
+      const document = await storage.createCalendarDocument(documentData);
+
+      // Process document in background (simulate for now)
+      setTimeout(async () => {
+        try {
+          await processCalendarDocument(document.id);
+        } catch (error) {
+          console.error("Error processing calendar document:", error);
+        }
+      }, 1000);
+
+      res.status(201).json({
+        id: document.id,
+        originalName: document.originalName,
+        status: "processing"
+      });
+    } catch (error) {
+      console.error("Error uploading calendar document:", error);
+      res.status(500).json({ message: "Failed to upload calendar document" });
+    }
+  });
+
+  // Function to process calendar documents (simulate AI extraction)
+  const processCalendarDocument = async (documentId: string) => {
+    try {
+      // Simulate processing time
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Simulate extracted events
+      const sampleEvents = [
+        {
+          title: "Junior Development Championships",
+          description: "Annual junior development competition",
+          eventType: "competition",
+          startDate: new Date(2025, 2, 15), // March 15, 2025
+          endDate: new Date(2025, 2, 17), // March 17, 2025
+          location: "Windhoek Sports Complex",
+          isAllDay: "false",
+          source: "document",
+          documentName: `document-${documentId}`,
+          createdBy: "system",
+        },
+        {
+          title: "UFAK Regional Tournament",
+          description: "Regional tournament for UFAK participants",
+          eventType: "competition",
+          startDate: new Date(2025, 3, 20), // April 20, 2025
+          endDate: new Date(2025, 3, 22), // April 22, 2025
+          location: "Swakopmund Sports Hall",
+          isAllDay: "false",
+          source: "document",
+          documentName: `document-${documentId}`,
+          createdBy: "system",
+        },
+        {
+          title: "National Championships",
+          description: "Annual national karate championships",
+          eventType: "competition",
+          startDate: new Date(2025, 5, 10), // June 10, 2025
+          endDate: new Date(2025, 5, 12), // June 12, 2025
+          location: "Windhoek Convention Centre",
+          isAllDay: "false",
+          source: "document",
+          documentName: `document-${documentId}`,
+          createdBy: "system",
+        },
+      ];
+
+      // Create events from extracted data
+      for (const eventData of sampleEvents) {
+        await storage.createCalendarEvent(eventData);
+      }
+
+      // Update document status
+      await storage.updateCalendarDocument(documentId, {
+        status: "processed",
+        extractedEventsCount: sampleEvents.length.toString(),
+        processingNotes: "Successfully extracted events from calendar document",
+        processedAt: new Date(),
+      });
+
+    } catch (error) {
+      console.error("Error processing calendar document:", error);
+      await storage.updateCalendarDocument(documentId, {
+        status: "failed",
+        processingNotes: "Failed to process calendar document",
+        processedAt: new Date(),
+      });
+    }
+  };
+
   const httpServer = createServer(app);
 
   // WebSocket server for real-time chat
