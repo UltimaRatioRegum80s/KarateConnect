@@ -96,6 +96,7 @@ The application is designed for deployment on Replit with the following setup:
 - ✅ Integrated bank statement data into financial charts for real-time data visualization
 - ✅ Added comprehensive calendar feature with month/year views and activity summaries
 - ✅ Implemented dual event entry methods: manual input and document upload with AI extraction
+- ✅ Populated calendar with complete NKF 2025 schedule (July-December events)
 - ✅ Ready for deployment at custom subdomain (exco-portal.replit.app requested)
 
 The architecture prioritizes governance functionality, financial transparency, and secure communication while maintaining real-time collaboration capabilities for executive decision-making.
