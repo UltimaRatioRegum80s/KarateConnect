@@ -78,11 +78,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { name, pin } = req.body;
       
+      console.log("Login attempt:", { name, pin }); // Debug log
+      
       if (!name || !pin) {
         return res.status(400).json({ message: "Name and PIN are required" });
       }
 
       const user = authenticateUser(name, pin);
+      console.log("Authentication result:", user); // Debug log
+      
       if (!user) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
@@ -90,6 +94,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Store user in session
       req.session.userId = user.id;
       req.session.user = user;
+
+      console.log("User logged in:", { id: user.id, name: user.name }); // Debug log
 
       res.json({
         id: user.id,

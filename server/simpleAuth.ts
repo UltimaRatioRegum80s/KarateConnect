@@ -30,9 +30,11 @@ export const testUsers: TestUser[] = [
 ];
 
 export function authenticateUser(name: string, pin: string): TestUser | null {
+  console.log("Authenticating:", { name, pin, available: testUsers.map(u => ({ name: u.name, pin: u.pin })) });
   const user = testUsers.find(u => 
     u.name.toLowerCase() === name.toLowerCase() && u.pin === pin
   );
+  console.log("Authentication result:", user ? "SUCCESS" : "FAILED");
   return user || null;
 }
 
