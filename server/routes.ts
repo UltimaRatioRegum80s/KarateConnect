@@ -379,20 +379,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Financial routes
+  // Helper functions for bank statement integration
+  const calculateBankStatementTotals = () => {
+    let totalIncome = 0;
+    let totalExpenses = 0;
+    let currentBalance = 125000; // Starting balance
+
+    bankStatementsMemory.forEach(statement => {
+      if (statement.status === 'processed' && statement.analysis) {
+        totalIncome += statement.analysis.totalIncome || 0;
+        totalExpenses += statement.analysis.totalExpenses || 0;
+      }
+    });
+
+    currentBalance = currentBalance + totalIncome - totalExpenses;
+
+    return { totalIncome, totalExpenses, currentBalance };
+  };
+
+  const extractFinancialEntriesFromBankStatements = (): any[] => {
+    const entries: any[] = [];
+    const currentYear = new Date().getFullYear().toString();
+
+    bankStatementsMemory.forEach(statement => {
+      if (statement.status === 'processed' && statement.analysis) {
+        // Add income entries from bank statement
+        statement.analysis.topIncomeCategories.forEach((category: any, index: number) => {
+          entries.push({
+            id: `bank-income-${statement.id}-${index}`,
+            type: 'income',
+            category: category.category,
+            description: `${category.category} (from ${statement.fileName})`,
+            amount: category.amount.toString(),
+            currency: 'NAD',
+            date: statement.uploadedAt,
+            isProjected: 'false',
+            financialYear: currentYear,
+            createdBy: 'bank-statement',
+            createdAt: statement.uploadedAt,
+            updatedAt: statement.uploadedAt
+          });
+        });
+
+        // Add expense entries from bank statement  
+        statement.analysis.topExpenseCategories.forEach((category: any, index: number) => {
+          entries.push({
+            id: `bank-expense-${statement.id}-${index}`,
+            type: 'expense',
+            category: category.category,
+            description: `${category.category} (from ${statement.fileName})`,
+            amount: category.amount.toString(),
+            currency: 'NAD',
+            date: statement.uploadedAt,
+            isProjected: 'false',
+            financialYear: currentYear,
+            createdBy: 'bank-statement',
+            createdAt: statement.uploadedAt,
+            updatedAt: statement.uploadedAt
+          });
+        });
+      }
+    });
+
+    return entries;
+  };
+
+  // Financial routes with bank statement integration
   app.get('/api/financial/summary/:year', isAuthenticated, async (req: any, res) => {
     try {
       const { year } = req.params;
-      const summary = await storage.getFinancialSummary(year);
-      res.json(summary || {
-        financialYear: year,
-        currentBalance: "0",
-        projectedIncome: "0",
-        projectedExpenses: "0",
-        actualIncome: "0",
-        actualExpenses: "0",
-        currency: "NAD",
-      });
+      
+      // Get base summary from database
+      const baseSummary = await storage.getFinancialSummary(year);
+      
+      // Calculate totals from bank statements
+      const bankStatementTotals = calculateBankStatementTotals();
+      
+      // Merge bank statement data with base summary
+      const enhancedSummary = {
+        ...(baseSummary || {
+          financialYear: year,
+          projectedIncome: "180000",
+          projectedExpenses: "155000",
+          currency: "NAD",
+        }),
+        actualIncome: bankStatementTotals.totalIncome.toString(),
+        actualExpenses: bankStatementTotals.totalExpenses.toString(),
+        currentBalance: bankStatementTotals.currentBalance.toString(),
+        lastUpdated: new Date().toISOString()
+      };
+      
+      res.json(enhancedSummary);
     } catch (error) {
       console.error("Error fetching financial summary:", error);
       res.status(500).json({ message: "Failed to fetch financial summary" });
@@ -402,8 +479,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/financial/entries/:year', isAuthenticated, async (req: any, res) => {
     try {
       const { year } = req.params;
-      const entries = await storage.getFinancialEntries(year);
-      res.json(entries);
+      
+      // Get base entries from database
+      const baseEntries = await storage.getFinancialEntries(year);
+      
+      // Get entries from bank statements
+      const bankStatementEntries = extractFinancialEntriesFromBankStatements();
+      
+      // Combine both sources, prioritizing bank statement data
+      const combinedEntries = [...bankStatementEntries, ...baseEntries];
+      
+      res.json(combinedEntries);
     } catch (error) {
       console.error("Error fetching financial entries:", error);
       res.status(500).json({ message: "Failed to fetch financial entries" });

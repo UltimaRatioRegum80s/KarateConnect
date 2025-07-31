@@ -93,11 +93,16 @@ export default function FinancialOverview() {
   // Fetch financial data
   const { data: summary, isLoading: summaryLoading } = useQuery<FinancialSummary>({
     queryKey: ["/api/financial/summary", currentYear],
+    refetchOnWindowFocus: true,
   });
 
   const { data: entries = [], isLoading: entriesLoading } = useQuery<FinancialEntry[]>({
     queryKey: ["/api/financial/entries", currentYear],
+    refetchOnWindowFocus: true,
   });
+
+  // Check if data comes from bank statements
+  const hasBankStatementData = entries.some(entry => entry.createdBy === 'bank-statement');
 
   // Create entry mutation
   const createEntryMutation = useMutation({
@@ -166,8 +171,8 @@ export default function FinancialOverview() {
   };
 
   const prepareCategoryData = () => {
-    const incomeByCategory = {};
-    const expenseByCategory = {};
+    const incomeByCategory: { [key: string]: number } = {};
+    const expenseByCategory: { [key: string]: number } = {};
 
     entries.forEach(entry => {
       if (entry.type === 'income') {
@@ -229,6 +234,11 @@ export default function FinancialOverview() {
           <Banknote className="h-6 w-6 text-green-600" />
           <h1 className="text-2xl font-bold">Financial Overview</h1>
           <Badge variant="outline">{currentYear}</Badge>
+          {hasBankStatementData && (
+            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+              📊 Live Bank Data
+            </Badge>
+          )}
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>

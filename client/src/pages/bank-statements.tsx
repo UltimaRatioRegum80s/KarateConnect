@@ -107,9 +107,10 @@ export default function BankStatements() {
     onSuccess: (data) => {
       toast({
         title: "Upload Successful",
-        description: `Bank statement "${data.originalName}" uploaded successfully.`,
+        description: `Bank statement "${data.originalName}" uploaded. Financial data will update automatically.`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/bank-statements"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/financial"] }); // Refresh financial data
       setUploadFile(null);
     },
     onError: (error) => {
