@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { Shield, Users, Settings } from "lucide-react";
 
 export default function Login() {
@@ -17,6 +18,7 @@ export default function Login() {
   const [error, setError] = useState("");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +46,13 @@ export default function Login() {
         description: `Logged in as ${data.name}`,
       });
 
-      setLocation("/");
+      // Invalidate auth queries to trigger re-fetch
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      
+      // Small delay to ensure query refetch completes
+      setTimeout(() => {
+        setLocation("/");
+      }, 100);
     } catch (error) {
       setError((error as Error).message || "Login failed");
     } finally {
