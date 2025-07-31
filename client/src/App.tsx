@@ -9,6 +9,7 @@ import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import ChatRoom from "@/pages/chat-room";
 import FinancialOverview from "@/pages/financial-overview";
+import BankStatements from "@/pages/bank-statements";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -22,6 +23,7 @@ function Router() {
           <Route path="/" component={Dashboard} />
           <Route path="/chat/:roomId" component={ChatRoom} />
           <Route path="/financial" component={FinancialOverview} />
+          <Route path="/bank-statements" component={BankStatements} />
         </>
       )}
       <Route component={NotFound} />

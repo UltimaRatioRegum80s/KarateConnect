@@ -426,6 +426,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin-only middleware
+  const isAdmin = async (req: any, res: any, next: any) => {
+    try {
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || (user.role !== "admin" && user.role !== "president")) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      req.user = user;
+      next();
+    } catch (error) {
+      console.error("Error checking admin status:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  };
+
+
+
+  // In-memory storage for bank statements (admin only)
+  const bankStatementsMemory: any[] = [];
+
+  app.post('/api/bank-statements/upload', isAuthenticated, isAdmin, upload.single('statement'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const userId = req.session.userId;
+      const { bankName, statementPeriod } = req.body;
+
+      // Create statement record in memory
+      const statement = {
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        fileName: req.file.filename,
+        originalName: req.file.originalname,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+        uploadedBy: userId,
+        bankName: bankName || null,
+        accountNumber: null,
+        statementPeriod: statementPeriod || null,
+        totalIncome: "0",
+        totalExpenses: "0",
+        netAmount: "0",
+        transactionCount: 0,
+        isProcessed: false,
+        processingNotes: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Store in memory
+      bankStatementsMemory.push(statement);
+
+      // Simple mock processing - in real app, this would parse the PDF/CSV
+      setTimeout(() => {
+        const stmt = bankStatementsMemory.find(s => s.id === statement.id);
+        if (stmt) {
+          stmt.totalIncome = (Math.random() * 50000 + 10000).toFixed(2);
+          stmt.totalExpenses = (Math.random() * 30000 + 5000).toFixed(2);
+          stmt.netAmount = (parseFloat(stmt.totalIncome) - parseFloat(stmt.totalExpenses)).toFixed(2);
+          stmt.transactionCount = Math.floor(Math.random() * 100) + 20;
+          stmt.isProcessed = true;
+          stmt.processingNotes = "Automatically processed statement";
+          stmt.updatedAt = new Date().toISOString();
+        }
+      }, 3000); // Process after 3 seconds
+
+      res.status(201).json(statement);
+    } catch (error) {
+      console.error("Error uploading bank statement:", error);
+      res.status(500).json({ message: "Failed to upload bank statement" });
+    }
+  });
+
+  app.delete('/api/bank-statements/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const index = bankStatementsMemory.findIndex(s => s.id === id);
+      
+      if (index === -1) {
+        return res.status(404).json({ message: "Bank statement not found" });
+      }
+
+      // Remove from memory
+      bankStatementsMemory.splice(index, 1);
+
+      res.json({ message: "Bank statement deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting bank statement:", error);
+      res.status(500).json({ message: "Failed to delete bank statement" });
+    }
+  });
+
+  // Get bank statements from memory
+  app.get('/api/bank-statements', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      res.json(bankStatementsMemory);
+    } catch (error) {
+      console.error("Error fetching bank statements:", error);
+      res.status(500).json({ message: "Failed to fetch bank statements" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket server for real-time chat

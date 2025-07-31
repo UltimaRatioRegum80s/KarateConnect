@@ -8,6 +8,8 @@ import {
   pollVotes,
   financialEntries,
   financialSummary,
+  bankStatements,
+  bankTransactions,
   type User,
   type UpsertUser,
   type ChatRoom,
@@ -26,6 +28,10 @@ import {
   type InsertFinancialEntry,
   type FinancialSummary,
   type InsertFinancialSummary,
+  type BankStatement,
+  type InsertBankStatement,
+  type BankTransaction,
+  type InsertBankTransaction,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sql } from "drizzle-orm";

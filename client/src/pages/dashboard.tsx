@@ -8,7 +8,7 @@ import ChatRoomCard from "@/components/chat/chat-room-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { MessageSquare, DollarSign } from "lucide-react";
+import { MessageSquare, DollarSign, FileText } from "lucide-react";
 import { Link } from "wouter";
 import type { User, ChatRoom } from "@shared/schema";
 
@@ -95,7 +95,7 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Actions Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center space-x-3">
@@ -128,6 +128,27 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
+          
+          {(user?.role === "admin" || user?.role === "president") && (
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
+                      <FileText className="h-6 w-6 text-yellow-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold">Bank Statements</h3>
+                      <p className="text-sm text-muted-foreground">Upload and analyze bank statements (Admin Only)</p>
+                    </div>
+                  </div>
+                  <Link href="/bank-statements">
+                    <Button variant="outline">Manage</Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <Separator className="mb-8" />

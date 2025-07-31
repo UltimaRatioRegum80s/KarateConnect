@@ -91,6 +91,41 @@ export const roomMembers = pgTable("room_members", {
   joinedAt: timestamp("joined_at").defaultNow(),
 });
 
+// Bank statements table - only for site admins
+export const bankStatements = pgTable("bank_statements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fileName: varchar("file_name").notNull(),
+  originalName: varchar("original_name").notNull(),
+  fileSize: integer("file_size").notNull(),
+  mimeType: varchar("mime_type").notNull(),
+  uploadedBy: varchar("uploaded_by").notNull().references(() => users.id),
+  bankName: varchar("bank_name"),
+  accountNumber: varchar("account_number"),
+  statementPeriod: varchar("statement_period"), // e.g., "2025-01"
+  totalIncome: varchar("total_income"), // stored as string for precision
+  totalExpenses: varchar("total_expenses"), // stored as string for precision
+  netAmount: varchar("net_amount"), // stored as string for precision
+  transactionCount: integer("transaction_count").default(0),
+  isProcessed: boolean("is_processed").default(false),
+  processingNotes: text("processing_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Bank statement transactions extracted from uploaded statements
+export const bankTransactions = pgTable("bank_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  statementId: varchar("statement_id").notNull().references(() => bankStatements.id, { onDelete: "cascade" }),
+  transactionDate: timestamp("transaction_date").notNull(),
+  description: text("description").notNull(),
+  amount: varchar("amount").notNull(), // stored as string for precision
+  type: varchar("type", { enum: ["credit", "debit"] }).notNull(),
+  balance: varchar("balance"), // running balance if provided
+  category: varchar("category"), // auto-categorized or manually set
+  reference: varchar("reference"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   messages: many(messages),
