@@ -91,10 +91,21 @@ export default function Calendar() {
   // Create event mutation
   const createEventMutation = useMutation({
     mutationFn: async (data: EventFormValues) => {
-      return apiRequest("/api/calendar/events", {
+      const response = await fetch("/api/calendar/events", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
         body: JSON.stringify(data),
       });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to create event");
+      }
+      
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
