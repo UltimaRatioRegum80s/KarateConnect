@@ -6,6 +6,8 @@ import {
   polls,
   pollOptions,
   pollVotes,
+  financialEntries,
+  financialSummary,
   type User,
   type UpsertUser,
   type ChatRoom,
@@ -20,6 +22,10 @@ import {
   type InsertPollOption,
   type PollVote,
   type InsertPollVote,
+  type FinancialEntry,
+  type InsertFinancialEntry,
+  type FinancialSummary,
+  type InsertFinancialSummary,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sql } from "drizzle-orm";
@@ -51,6 +57,13 @@ export interface IStorage {
   getPollWithOptions(pollId: string): Promise<(Poll & { options: (PollOption & { voteCount: number; userVotes: string[] })[] }) | null>;
   votePoll(vote: InsertPollVote): Promise<PollVote>;
   removePollVote(pollId: string, optionId: string, userId: string): Promise<void>;
+
+  // Financial operations
+  getFinancialSummary(financialYear: string): Promise<FinancialSummary | undefined>;
+  getFinancialEntries(financialYear: string): Promise<FinancialEntry[]>;
+  createFinancialEntry(entry: InsertFinancialEntry): Promise<FinancialEntry>;
+  updateFinancialSummary(summary: InsertFinancialSummary): Promise<FinancialSummary>;
+  deleteFinancialEntry(id: string): Promise<void>;
 
   // Statistics
   getRoomStats(roomId: string): Promise<{ memberCount: number; messageCount: number }>;
@@ -279,6 +292,55 @@ export class DatabaseStorage implements IStorage {
       .where(
         sql`${pollVotes.pollId} = ${pollId} AND ${pollVotes.optionId} = ${optionId} AND ${pollVotes.userId} = ${userId}`
       );
+  }
+
+  // Financial operations
+  async getFinancialSummary(financialYear: string): Promise<FinancialSummary | undefined> {
+    const [summary] = await db
+      .select()
+      .from(financialSummary)
+      .where(eq(financialSummary.financialYear, financialYear));
+    return summary;
+  }
+
+  async getFinancialEntries(financialYear: string): Promise<FinancialEntry[]> {
+    return await db
+      .select()
+      .from(financialEntries)
+      .where(eq(financialEntries.financialYear, financialYear))
+      .orderBy(desc(financialEntries.date));
+  }
+
+  async createFinancialEntry(entry: InsertFinancialEntry): Promise<FinancialEntry> {
+    const [newEntry] = await db
+      .insert(financialEntries)
+      .values(entry)
+      .returning();
+    return newEntry;
+  }
+
+  async updateFinancialSummary(summary: InsertFinancialSummary): Promise<FinancialSummary> {
+    const [updatedSummary] = await db
+      .insert(financialSummary)
+      .values(summary)
+      .onConflictDoUpdate({
+        target: financialSummary.financialYear,
+        set: {
+          currentBalance: summary.currentBalance,
+          projectedIncome: summary.projectedIncome,
+          projectedExpenses: summary.projectedExpenses,
+          actualIncome: summary.actualIncome,
+          actualExpenses: summary.actualExpenses,
+          lastUpdated: new Date(),
+          updatedBy: summary.updatedBy,
+        },
+      })
+      .returning();
+    return updatedSummary;
+  }
+
+  async deleteFinancialEntry(id: string): Promise<void> {
+    await db.delete(financialEntries).where(eq(financialEntries.id, id));
   }
 
   // Statistics

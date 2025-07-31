@@ -197,6 +197,40 @@ export const loginSchema = z.object({
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+// Financial Overview Tables
+export const financialEntries = pgTable("financial_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: varchar("type", { enum: ["income", "expense", "balance"] }).notNull(),
+  category: varchar("category").notNull(), // e.g., "membership_fees", "tournament_entry", "equipment", "venue_rental"
+  description: varchar("description").notNull(),
+  amount: varchar("amount").notNull(), // stored as string to handle currency formatting
+  currency: varchar("currency").default("NAD"),
+  date: timestamp("date").notNull(),
+  isProjected: varchar("is_projected", { enum: ["true", "false"] }).default("false"), // projected vs actual
+  financialYear: varchar("financial_year").notNull(), // e.g., "2025"
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const financialSummary = pgTable("financial_summary", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  financialYear: varchar("financial_year").notNull().unique(),
+  currentBalance: varchar("current_balance").notNull(),
+  projectedIncome: varchar("projected_income").notNull(),
+  projectedExpenses: varchar("projected_expenses").notNull(),
+  actualIncome: varchar("actual_income").default("0"),
+  actualExpenses: varchar("actual_expenses").default("0"),
+  currency: varchar("currency").default("NAD"),
+  lastUpdated: timestamp("last_updated").defaultNow(),
+  updatedBy: varchar("updated_by").references(() => users.id),
+});
+
+export type FinancialEntry = typeof financialEntries.$inferSelect;
+export type InsertFinancialEntry = typeof financialEntries.$inferInsert;
+export type FinancialSummary = typeof financialSummary.$inferSelect;
+export type InsertFinancialSummary = typeof financialSummary.$inferInsert;
 export type ChatRoom = typeof chatRooms.$inferSelect;
 export type InsertChatRoom = z.infer<typeof insertChatRoomSchema>;
 export type Message = typeof messages.$inferSelect;

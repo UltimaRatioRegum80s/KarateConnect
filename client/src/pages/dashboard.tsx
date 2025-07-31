@@ -7,6 +7,9 @@ import Header from "@/components/layout/header";
 import ChatRoomCard from "@/components/chat/chat-room-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { MessageSquare, DollarSign } from "lucide-react";
+import { Link } from "wouter";
 import type { User, ChatRoom } from "@shared/schema";
 
 export default function Dashboard() {
@@ -90,6 +93,44 @@ export default function Dashboard() {
             Access your EXCO rooms and manage federation activities.
           </p>
         </div>
+
+        {/* Quick Actions Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                  <MessageSquare className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">Discussion Rooms</h3>
+                  <p className="text-sm text-muted-foreground">Topic-based chat rooms for governance discussions</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                    <DollarSign className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">Financial Overview</h3>
+                    <p className="text-sm text-muted-foreground">View financial status and projections</p>
+                  </div>
+                </div>
+                <Link href="/financial">
+                  <Button variant="outline">View</Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Separator className="mb-8" />
 
         {/* Chat Rooms Grid */}
         <div className="mb-12">

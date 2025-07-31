@@ -379,6 +379,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Financial routes
+  app.get('/api/financial/summary/:year', isAuthenticated, async (req: any, res) => {
+    try {
+      const { year } = req.params;
+      const summary = await storage.getFinancialSummary(year);
+      res.json(summary || {
+        financialYear: year,
+        currentBalance: "0",
+        projectedIncome: "0",
+        projectedExpenses: "0",
+        actualIncome: "0",
+        actualExpenses: "0",
+        currency: "NAD",
+      });
+    } catch (error) {
+      console.error("Error fetching financial summary:", error);
+      res.status(500).json({ message: "Failed to fetch financial summary" });
+    }
+  });
+
+  app.get('/api/financial/entries/:year', isAuthenticated, async (req: any, res) => {
+    try {
+      const { year } = req.params;
+      const entries = await storage.getFinancialEntries(year);
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching financial entries:", error);
+      res.status(500).json({ message: "Failed to fetch financial entries" });
+    }
+  });
+
+  app.post('/api/financial/entries', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const entryData = {
+        ...req.body,
+        createdBy: userId,
+      };
+      
+      const entry = await storage.createFinancialEntry(entryData);
+      res.status(201).json(entry);
+    } catch (error) {
+      console.error("Error creating financial entry:", error);
+      res.status(500).json({ message: "Failed to create financial entry" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket server for real-time chat
