@@ -2,11 +2,12 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./auth";
+import { authenticateUser, getUserById, isAdmin, type TestUser } from "./simpleAuth";
 import { insertMessageSchema, insertChatRoomSchema, insertRoomMemberSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs/promises";
+import session from "express-session";
 
 // Configure multer for file uploads
 const storage_config = multer.diskStorage({
@@ -44,11 +45,104 @@ const upload = multer({
   }
 });
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
+// Simple authentication middleware for development
+const isAuthenticated = (req: any, res: any, next: any) => {
+  if (req.session && req.session.userId) {
+    return next();
+  }
+  return res.status(401).json({ message: "Unauthorized" });
+};
 
-  // Auth routes are handled in setupAuth
+// Admin check middleware
+const isAdminUser = (req: any, res: any, next: any) => {
+  if (req.session && req.session.user && req.session.user.role === 'admin') {
+    return next();
+  }
+  return res.status(403).json({ message: "Admin access required" });
+};
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  // Session configuration for simple auth
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'nkf-dev-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: false, // Set to true in production with HTTPS
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+  }));
+
+  // Simple login endpoint
+  app.post('/api/auth/login', async (req: any, res: any) => {
+    try {
+      const { name, pin } = req.body;
+      
+      if (!name || !pin) {
+        return res.status(400).json({ message: "Name and PIN are required" });
+      }
+
+      const user = authenticateUser(name, pin);
+      if (!user) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      // Store user in session
+      req.session.userId = user.id;
+      req.session.user = user;
+
+      res.json({
+        id: user.id,
+        name: user.name,
+        position: user.position,
+        role: user.role
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  // Get current user
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res: any) => {
+    try {
+      const user = getUserById(req.session.userId);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      res.json({
+        id: user.id,
+        name: user.name,
+        position: user.position,
+        role: user.role
+      });
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Logout endpoint
+  app.post('/api/auth/logout', (req: any, res: any) => {
+    req.session.destroy((err: any) => {
+      if (err) {
+        return res.status(500).json({ message: "Logout failed" });
+      }
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+
+  // Initialize test data endpoint
+  app.post('/api/auth/initialize', async (req: any, res: any) => {
+    try {
+      // This endpoint can be used to set up initial test data
+      res.json({ message: "System initialized for testing" });
+    } catch (error) {
+      console.error("Initialization error:", error);
+      res.status(500).json({ message: "Initialization failed" });
+    }
+  });
 
   // Chat room routes
   app.get('/api/chat-rooms', isAuthenticated, async (req, res) => {
@@ -538,7 +632,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // In-memory storage for bank statements (admin only)
   const bankStatementsMemory: any[] = [];
 
-  app.post('/api/bank-statements/upload', isAuthenticated, isAdmin, upload.single('statement'), async (req: any, res) => {
+  app.post('/api/bank-statements/upload', isAuthenticated, isAdminUser, upload.single('statement'), async (req: any, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
@@ -592,7 +686,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/bank-statements/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+  app.delete('/api/bank-statements/:id', isAuthenticated, isAdminUser, async (req: any, res) => {
     try {
       const { id } = req.params;
       const index = bankStatementsMemory.findIndex(s => s.id === id);
@@ -612,7 +706,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get bank statements from memory
-  app.get('/api/bank-statements', isAuthenticated, isAdmin, async (req: any, res) => {
+  app.get('/api/bank-statements', isAuthenticated, isAdminUser, async (req: any, res) => {
     try {
       res.json(bankStatementsMemory);
     } catch (error) {
