@@ -25,8 +25,11 @@ import {
   Calendar,
   Target,
   AlertCircle,
-  Banknote
+  Banknote,
+  BarChart3,
+  LineChart
 } from "lucide-react";
+import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
 interface FinancialSummary {
   id: string;
@@ -134,6 +137,68 @@ export default function FinancialOverview() {
   const getExpenseEntries = () => entries.filter(e => e.type === "expense");
   const getProjectedEntries = () => entries.filter(e => e.isProjected === "true");
   const getActualEntries = () => entries.filter(e => e.isProjected === "false");
+
+  // Prepare chart data
+  const prepareMonthlyTrendData = () => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months.map((month, index) => {
+      const monthNum = index + 1;
+      const monthEntries = entries.filter(entry => {
+        const entryMonth = new Date(entry.date).getMonth() + 1;
+        return entryMonth === monthNum;
+      });
+      
+      const income = monthEntries
+        .filter(e => e.type === 'income')
+        .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+      
+      const expenses = monthEntries
+        .filter(e => e.type === 'expense')
+        .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+
+      return {
+        month,
+        income,
+        expenses,
+        balance: income - expenses
+      };
+    });
+  };
+
+  const prepareCategoryData = () => {
+    const incomeByCategory = {};
+    const expenseByCategory = {};
+
+    entries.forEach(entry => {
+      if (entry.type === 'income') {
+        incomeByCategory[entry.category] = (incomeByCategory[entry.category] || 0) + parseFloat(entry.amount);
+      } else if (entry.type === 'expense') {
+        expenseByCategory[entry.category] = (expenseByCategory[entry.category] || 0) + parseFloat(entry.amount);
+      }
+    });
+
+    return {
+      income: Object.entries(incomeByCategory).map(([name, value]) => ({ name, value })),
+      expenses: Object.entries(expenseByCategory).map(([name, value]) => ({ name, value }))
+    };
+  };
+
+  const prepareProjectionVsActualData = () => {
+    return [
+      {
+        category: 'Income',
+        projected: parseFloat(summary?.projectedIncome || '0'),
+        actual: parseFloat(summary?.actualIncome || '0')
+      },
+      {
+        category: 'Expenses', 
+        projected: parseFloat(summary?.projectedExpenses || '0'),
+        actual: parseFloat(summary?.actualExpenses || '0')
+      }
+    ];
+  };
+
+  const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#F97316'];
 
   if (summaryLoading || entriesLoading) {
     return (
@@ -391,6 +456,146 @@ export default function FinancialOverview() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
+          {/* Financial Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Monthly Trends Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <LineChart className="h-5 w-5 text-blue-600" />
+                  Monthly Financial Trends
+                </CardTitle>
+                <CardDescription>
+                  Income vs Expenses trend throughout the year
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <RechartsLineChart data={prepareMonthlyTrendData()}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => [`NAD ${value.toLocaleString()}`, '']} />
+                    <Legend />
+                    <Line 
+                      type="monotone" 
+                      dataKey="income" 
+                      stroke="#10B981" 
+                      strokeWidth={3}
+                      name="Income"
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="expenses" 
+                      stroke="#EF4444" 
+                      strokeWidth={3}
+                      name="Expenses"
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="balance" 
+                      stroke="#3B82F6" 
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      name="Net Balance"
+                    />
+                  </RechartsLineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Projected vs Actual Comparison */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-green-600" />
+                  Projected vs Actual
+                </CardTitle>
+                <CardDescription>
+                  How we're performing against projections
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={prepareProjectionVsActualData()}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="category" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => [`NAD ${value.toLocaleString()}`, '']} />
+                    <Legend />
+                    <Bar dataKey="projected" fill="#94A3B8" name="Projected" />
+                    <Bar dataKey="actual" fill="#10B981" name="Actual" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Category Breakdown Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Income Categories */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-green-600" />
+                  Income by Category
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={prepareCategoryData().income}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {prepareCategoryData().income.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => [`NAD ${value.toLocaleString()}`, 'Amount']} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Expense Categories */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingDown className="h-5 w-5 text-red-600" />
+                  Expenses by Category
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={prepareCategoryData().expenses}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {prepareCategoryData().expenses.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => [`NAD ${value.toLocaleString()}`, 'Amount']} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+          
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
