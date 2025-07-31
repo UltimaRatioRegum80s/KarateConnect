@@ -79,6 +79,15 @@ export default function Calendar() {
   // Fetch calendar events
   const { data: events = [], isLoading: eventsLoading } = useQuery<CalendarEvent[]>({
     queryKey: ["/api/calendar/events", getYear(currentDate)],
+    queryFn: async () => {
+      const response = await fetch(`/api/calendar/events?year=${getYear(currentDate)}`, {
+        credentials: "include"
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch events");
+      }
+      return response.json();
+    },
     enabled: isAuthenticated,
   });
 
