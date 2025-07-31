@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a full-stack chat application built for the Namibia Karate Federation (NKF) Executive Committee. It's a real-time messaging platform that allows EXCO members to communicate in topic-based chat rooms. The application uses a modern tech stack with React on the frontend, Express.js on the backend, PostgreSQL for data storage, and WebSocket connections for real-time messaging.
+This is a comprehensive governance portal built for the Namibia Karate Federation (NKF) Executive Committee. It's a full-featured platform that allows EXCO members to communicate in topic-based chat rooms, participate in WhatsApp-style polling, manage financial oversight with interactive visualizations, and handle secure bank statement analysis. The application uses a modern tech stack with React on the frontend, Express.js on the backend, PostgreSQL for data storage, and WebSocket connections for real-time messaging.
 
 ## User Preferences
 
@@ -75,10 +75,22 @@ The application is designed for deployment on Replit with the following setup:
 - **Environment**: Requires `DATABASE_URL` and `SESSION_SECRET` environment variables
 
 ### Key Features
+- **Multi-Channel Communication**: Topic-based chat rooms with multimedia support and file sharing
+- **WhatsApp-Style Polling**: Interactive voting system for organizational decisions
+- **Financial Management**: Interactive charts showing income/expense trends, budget tracking, and projections
+- **Bank Statement Analysis**: Admin-only secure upload and analysis system with automatic categorization
+- **Real-time Messaging**: WebSocket connections for instant communication
+- **Role-Based Access**: Admin controls for sensitive financial data
 - **Session Management**: PostgreSQL-backed sessions with configurable TTL
-- **Error Handling**: Comprehensive error handling with user-friendly messages
 - **Mobile Responsive**: Tailwind CSS ensures mobile compatibility
-- **Real-time Updates**: WebSocket connections for instant messaging
 - **Type Safety**: Full TypeScript coverage across the stack
 
-The architecture prioritizes simplicity, type safety, and real-time functionality while maintaining a clean separation of concerns between frontend, backend, and shared code.
+### Recent Updates (January 2025)
+- ✅ Added comprehensive financial visualization with 4 chart types (line, bar, pie charts)
+- ✅ Implemented admin-only bank statement upload and analysis system
+- ✅ Created interactive polling system with real-time vote tracking
+- ✅ Enhanced chat rooms with multimedia capabilities
+- ✅ Built financial database with sample data for testing
+- ✅ Ready for deployment at custom subdomain (exco-portal.replit.app requested)
+
+The architecture prioritizes governance functionality, financial transparency, and secure communication while maintaining real-time collaboration capabilities for executive decision-making.
