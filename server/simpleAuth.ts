@@ -11,41 +11,13 @@ export interface TestUser {
 
 // Test user accounts for development
 export const testUsers: TestUser[] = [
-  // Standard test accounts for peers
+  // Standard test account for peers
   {
     id: '1001',
-    name: 'President',
+    name: 'Test User',
     pin: '1234',
     role: 'member',
-    position: 'Admin President'
-  },
-  {
-    id: '1002', 
-    name: 'Vice President',
-    pin: '5678',
-    role: 'member',
-    position: 'Vice President'
-  },
-  {
-    id: '1003',
-    name: 'Secretary',
-    pin: '9012',
-    role: 'member',
-    position: 'Secretary'
-  },
-  {
-    id: '1004',
-    name: 'Treasurer',
-    pin: '3456',
-    role: 'member',
-    position: 'Treasurer'
-  },
-  {
-    id: '1005',
-    name: 'Technical Director',
-    pin: '7890',
-    role: 'member',
-    position: 'Technical Director'
+    position: 'Test Member'
   },
   // Secret admin account
   {

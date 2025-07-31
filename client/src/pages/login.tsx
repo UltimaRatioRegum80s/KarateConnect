@@ -129,27 +129,19 @@ export default function Login() {
           </CardContent>
         </Card>
 
-        {/* Test Accounts Info */}
+        {/* Test Account Info */}
         <Card className="shadow-lg bg-blue-50 border-blue-200">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Users className="w-5 h-5 text-blue-600" />
-              Default Test Accounts:
+              Test Account:
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid gap-2 text-sm">
               <div className="flex justify-between items-center">
-                <span className="font-medium">Admin President</span>
+                <span className="font-medium">Test User</span>
                 <Badge variant="outline">PIN: 1234</Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Vice President</span>
-                <Badge variant="outline">PIN: 5678</Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Secretary</span>
-                <Badge variant="outline">PIN: 9012</Badge>
               </div>
             </div>
           </CardContent>
