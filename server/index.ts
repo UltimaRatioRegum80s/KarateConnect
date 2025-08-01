@@ -8,8 +8,10 @@ app.use(express.urlencoded({ extended: false }));
 
 // Add headers for iframe compatibility in Replit preview
 app.use((req, res, next) => {
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-  res.setHeader('Content-Security-Policy', "frame-ancestors 'self' *.replit.dev *.replit.com");
+  // Remove X-Frame-Options to allow iframe embedding
+  res.removeHeader('X-Frame-Options');
+  // Allow iframe from Replit domains
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'self' *.replit.dev *.replit.com *.replit.app");
   next();
 });
 

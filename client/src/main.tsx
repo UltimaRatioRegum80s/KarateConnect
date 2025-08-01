@@ -3,6 +3,9 @@ import App from "./App";
 import "./index.css";
 
 console.log("NKF Portal: main.tsx loading");
+console.log("Window location:", window.location.href);
+console.log("Document readyState:", document.readyState);
+console.log("User agent:", navigator.userAgent);
 
 const root = document.getElementById("root");
 console.log("NKF Portal: Root element found:", !!root);
