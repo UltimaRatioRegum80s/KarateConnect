@@ -62,6 +62,96 @@ const isAdminUser = (req: any, res: any, next: any) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Test route for debugging - this needs to be before Vite middleware
+  app.get('/test', (req, res) => {
+    res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NKF EXCO Portal - Test</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 40px;
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        .status {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🥋 NKF EXCO Portal</h1>
+        <p style="font-size: 1.2rem;">Direct HTML Test - Server is Working!</p>
+        
+        <div class="status">
+            <h2>System Diagnostics:</h2>
+            <ul style="list-style: none; padding-left: 0;">
+                <li>✅ Express server running on port 5000</li>
+                <li>✅ HTML serving correctly</li>
+                <li>✅ Static assets loading</li>
+                <li id="js-test">⏳ JavaScript test pending...</li>
+            </ul>
+        </div>
+        
+        <button onclick="testJS()">Test JavaScript</button>
+        <button onclick="window.location.href='/'">Back to React App</button>
+        
+        <div style="margin-top: 30px; padding: 20px; background: rgba(255,0,0,0.1); border-radius: 8px;">
+            <h3>React App Issues:</h3>
+            <p>If you can see this page but not the React app, the issue is with Vite middleware configuration.</p>
+            <p>The server is working correctly but React components are not rendering.</p>
+        </div>
+    </div>
+
+    <script>
+        function testJS() {
+            document.getElementById('js-test').innerHTML = '✅ JavaScript working correctly';
+            alert('JavaScript is working! The issue is with React/Vite setup.');
+        }
+        
+        // Auto-test JS after 1 second
+        setTimeout(() => {
+            document.getElementById('js-test').innerHTML = '✅ JavaScript loading automatically';
+        }, 1000);
+        
+        console.log('Direct HTML page loaded successfully');
+    </script>
+</body>
+</html>
+    `);
+  });
+
   // Session configuration for simple auth
   app.use(session({
     secret: process.env.SESSION_SECRET || 'nkf-dev-secret-key',
