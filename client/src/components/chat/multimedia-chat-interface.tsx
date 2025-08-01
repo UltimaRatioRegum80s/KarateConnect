@@ -20,7 +20,8 @@ import {
   Download,
   Paperclip,
   X,
-  BarChart3
+  BarChart3,
+  Trash2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import PollComponent from "./poll-component";
@@ -59,7 +60,7 @@ interface ChatInterfaceProps {
 }
 
 export default function MultimediaChatInterface({ roomId }: ChatInterfaceProps) {
-  const { user } = useAuth() as { user: { id: string; name: string } | undefined };
+  const { user } = useAuth() as { user: { id: string; name: string; role?: string } | undefined };
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -191,6 +192,28 @@ export default function MultimediaChatInterface({ roomId }: ChatInterfaceProps) 
       toast({
         title: "Error",
         description: "Failed to create poll",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Admin delete message mutation
+  const deleteMessageMutation = useMutation({
+    mutationFn: async (messageId: string) => {
+      return await apiRequest(`/api/messages/${messageId}`, 'DELETE');
+    },
+    onSuccess: (data, messageId) => {
+      setMessages(prev => prev.filter(msg => msg.id !== messageId));
+      queryClient.invalidateQueries({ queryKey: ["/api/chat-rooms", roomId, "messages"] });
+      toast({
+        title: "Message Deleted",
+        description: "Message has been removed successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete message. Admin access required.",
         variant: "destructive",
       });
     },
@@ -411,8 +434,21 @@ export default function MultimediaChatInterface({ roomId }: ChatInterfaceProps) 
               </div>
             )}
             
-            <div className="text-xs mt-1 opacity-70">
-              {new Date(message.createdAt).toLocaleTimeString()}
+            <div className="flex items-center justify-between mt-1">
+              <div className="text-xs opacity-70">
+                {new Date(message.createdAt).toLocaleTimeString()}
+              </div>
+              {user?.role === 'admin' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => deleteMessageMutation.mutate(message.id)}
+                  className="p-1 h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50"
+                  title="Delete message (Admin only)"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              )}
             </div>
           </div>
         </div>

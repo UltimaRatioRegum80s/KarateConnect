@@ -200,6 +200,14 @@ export class DatabaseStorage implements IStorage {
     return newMessage;
   }
 
+  async deleteMessage(messageId: string): Promise<boolean> {
+    const result = await db
+      .delete(messages)
+      .where(eq(messages.id, messageId))
+      .returning();
+    return result.length > 0;
+  }
+
   // Room membership operations
   async getRoomMembers(roomId: string): Promise<(RoomMember & { user: User })[]> {
     return await db

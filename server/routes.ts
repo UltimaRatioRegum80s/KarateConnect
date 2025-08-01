@@ -416,6 +416,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete message endpoint (admin only)
+  app.delete('/api/messages/:messageId', isAuthenticated, isAdminUser, async (req: any, res) => {
+    try {
+      const { messageId } = req.params;
+      const deleted = await storage.deleteMessage(messageId);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Message not found" });
+      }
+      
+      res.json({ message: "Message deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      res.status(500).json({ message: "Failed to delete message" });
+    }
+  });
+
   // Enhanced message creation endpoint with file upload
   app.post('/api/chat-rooms/:roomId/messages', isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
