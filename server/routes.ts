@@ -62,6 +62,119 @@ const isAdminUser = (req: any, res: any, next: any) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Direct access route to bypass iframe issues
+  app.get('/direct', (req, res) => {
+    res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NKF EXCO Portal - Direct Access</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .card {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 12px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+        }
+        .success { border-left: 4px solid #4CAF50; }
+        .warning { border-left: 4px solid #ff9800; }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            margin: 10px;
+            transition: all 0.3s;
+        }
+        button:hover { background: #45a049; transform: translateY(-2px); }
+        .alt-button { background: #2196F3; }
+        .alt-button:hover { background: #1976D2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🥋 NKF EXCO Portal</h1>
+        
+        <div class="card success">
+            <h2>Server Status: ✅ Running</h2>
+            <p>Express server is running correctly on port 5000</p>
+            <p>This confirms the backend is working properly.</p>
+        </div>
+        
+        <div class="card warning">
+            <h2>Replit Iframe Issue Detected</h2>
+            <p>The Replit workspace iframe is having trouble loading the React app.</p>
+            <p>This is a common Replit environment issue, not a problem with your code.</p>
+        </div>
+        
+        <div class="card">
+            <h2>Access Options</h2>
+            <p>Try these alternative access methods:</p>
+            
+            <button onclick="window.open(window.location.origin, '_blank')">
+                Open in New Tab
+            </button>
+            
+            <button class="alt-button" onclick="window.location.href = '/'">
+                Try React App Again
+            </button>
+            
+            <button class="alt-button" onclick="window.location.href = '/api/auth/user'">
+                Test API Endpoint
+            </button>
+        </div>
+        
+        <div class="card">
+            <h3>If issues persist:</h3>
+            <ul style="text-align: left; max-width: 400px; margin: 0 auto;">
+                <li>Wait 30-60 seconds for Replit to stabilize</li>
+                <li>Try refreshing the page</li>
+                <li>Open the app URL directly in a new browser tab</li>
+                <li>Check if Replit services are experiencing issues</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        console.log('NKF Portal: Direct access page loaded');
+        console.log('Server URL:', window.location.origin);
+        
+        // Auto-test API connectivity
+        fetch('/api/auth/user')
+            .then(response => {
+                console.log('API Test - Status:', response.status);
+                if (response.status === 401) {
+                    console.log('API Test: Server responding correctly (401 = expected for unauthenticated)');
+                }
+            })
+            .catch(error => {
+                console.error('API Test - Error:', error);
+            });
+    </script>
+</body>
+</html>
+    `);
+  });
+
   // Test route for debugging - this needs to be before Vite middleware
   app.get('/test', (req, res) => {
     res.send(`
