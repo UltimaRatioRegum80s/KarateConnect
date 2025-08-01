@@ -287,24 +287,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Name and PIN are required" });
       }
 
-      const user = authenticateUser(name, pin);
-      console.log("Authentication result:", user); // Debug log
+      // Check if user exists in database first
+      let dbUser = await storage.getUserByNameAndPin(name, pin);
       
-      if (!user) {
-        return res.status(401).json({ message: "Invalid credentials" });
+      if (!dbUser) {
+        // If not found, authenticate with test users and create in database
+        const testUser = authenticateUser(name, pin);
+        if (!testUser) {
+          return res.status(401).json({ message: "Invalid credentials" });
+        }
+        
+        // Create user in database
+        dbUser = await storage.createUser({
+          name: testUser.name,
+          pin: testUser.pin,
+          role: testUser.role,
+          title: testUser.position,
+          is_active: true
+        });
       }
 
       // Store user in session
-      req.session.userId = user.id;
-      req.session.user = user;
+      req.session.userId = dbUser.id;
+      req.session.user = dbUser;
 
-      console.log("User logged in:", { id: user.id, name: user.name }); // Debug log
+      console.log("User logged in:", { id: dbUser.id, name: dbUser.name }); // Debug log
 
       res.json({
-        id: user.id,
-        name: user.name,
-        position: user.position,
-        role: user.role
+        id: dbUser.id,
+        name: dbUser.name,
+        position: dbUser.title,
+        role: dbUser.role
       });
     } catch (error) {
       console.error("Login error:", error);

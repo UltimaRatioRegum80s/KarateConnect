@@ -14,6 +14,7 @@ import {
   calendarDocuments,
   type User,
   type UpsertUser,
+  type InsertUser,
   type ChatRoom,
   type InsertChatRoom,
   type Message,
@@ -30,10 +31,7 @@ import {
   type InsertFinancialEntry,
   type FinancialSummary,
   type InsertFinancialSummary,
-  type BankStatement,
-  type InsertBankStatement,
-  type BankTransaction,
-  type InsertBankTransaction,
+
   type CalendarEvent,
   type InsertCalendarEvent,
   type CalendarDocument,
@@ -47,7 +45,8 @@ export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
   getUserByCredentials(name: string, pin: string): Promise<User | undefined>;
-  createUser(user: UpsertUser): Promise<User>;
+  getUserByNameAndPin(name: string, pin: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
   
   // Chat room operations
   getChatRooms(): Promise<ChatRoom[]>;
@@ -57,6 +56,7 @@ export interface IStorage {
   // Message operations
   getMessages(roomId: string, limit?: number): Promise<(Message & { user: User })[]>;
   createMessage(message: InsertMessage): Promise<Message>;
+  deleteMessage(messageId: string): Promise<boolean>;
   
   // Room membership operations
   getRoomMembers(roomId: string): Promise<(RoomMember & { user: User })[]>;
@@ -108,7 +108,15 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(userData: UpsertUser): Promise<User> {
+  async getUserByNameAndPin(name: string, pin: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(sql`${users.name} = ${name} AND ${users.pin} = ${pin}`);
+    return user;
+  }
+
+  async createUser(userData: InsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
       .values(userData)
