@@ -6,6 +6,13 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Add headers for iframe compatibility in Replit preview
+app.use((req, res, next) => {
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'self' *.replit.dev *.replit.com");
+  next();
+});
+
 // CORS middleware for development
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Credentials", "true");
