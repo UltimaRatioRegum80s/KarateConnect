@@ -1318,6 +1318,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin API Routes
+  app.post('/api/admin/interface-texts', isAuthenticated, async (req: any, res) => {
+    try {
+      const interfaceTexts = req.body;
+      
+      // In production, this would save to database
+      // For now, we'll just return success
+      console.log('Interface texts updated:', interfaceTexts);
+      
+      res.json({ success: true, message: 'Interface texts updated successfully' });
+    } catch (error) {
+      console.error("Error updating interface texts:", error);
+      res.status(500).json({ message: "Failed to update interface texts" });
+    }
+  });
+
+  app.post('/api/admin/theme', isAuthenticated, async (req: any, res) => {
+    try {
+      const themeSettings = req.body;
+      
+      // In production, this would save to database and apply CSS custom properties
+      console.log('Theme settings updated:', themeSettings);
+      
+      res.json({ success: true, message: 'Theme updated successfully' });
+    } catch (error) {
+      console.error("Error updating theme:", error);
+      res.status(500).json({ message: "Failed to update theme" });
+    }
+  });
+
+  app.post('/api/admin/reset-badges', isAuthenticated, async (req: any, res) => {
+    try {
+      // Reset all unread counts for all rooms
+      await storage.resetAllUnreadCounts();
+      
+      res.json({ success: true, message: 'All notification badges have been reset' });
+    } catch (error) {
+      console.error("Error resetting badges:", error);
+      res.status(500).json({ message: "Failed to reset badges" });
+    }
+  });
+
+  app.get('/api/admin/user-roles', isAuthenticated, async (req: any, res) => {
+    try {
+      // In production, this would fetch from database with proper role management
+      const userRoles = [
+        { id: "1001", name: "David Mwandingi", role: "President", permissions: ["all"] },
+        { id: "1002", name: "System Admin", role: "Administrator", permissions: ["all"] },
+        { id: "1003", name: "Martin Jasper", role: "Vice President", permissions: ["chat", "calendar", "financial_view"] },
+        { id: "1004", name: "Hilma Hausiku", role: "Secretary General", permissions: ["chat", "calendar", "financial_edit"] }
+      ];
+      
+      res.json(userRoles);
+    } catch (error) {
+      console.error("Error fetching user roles:", error);
+      res.status(500).json({ message: "Failed to fetch user roles" });
+    }
+  });
+
+  app.post('/api/admin/user-roles/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const { role, permissions } = req.body;
+      
+      // In production, this would update the database
+      console.log(`Updated user ${userId} with role: ${role}, permissions:`, permissions);
+      
+      res.json({ success: true, message: 'User role updated successfully' });
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ message: "Failed to update user role" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket server for real-time chat

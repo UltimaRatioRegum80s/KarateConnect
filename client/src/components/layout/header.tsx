@@ -129,6 +129,10 @@ export default function Header() {
                     <Database className="h-4 w-4 mr-2" />
                     Bank Statements
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => window.location.href = "/admin"}>
+                    <Settings className="h-4 w-4 mr-2" />
+                    Admin Panel
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={toggleAdminMode}>
                     <Settings className="h-4 w-4 mr-2" />

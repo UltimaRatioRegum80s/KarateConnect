@@ -104,6 +104,9 @@ export interface IStorage {
   getUnreadMessageCount(roomId: string, userId: string): Promise<number>;
   markRoomAsRead(roomId: string, userId: string, messageId?: string): Promise<void>;
   getUserStats(userId: string): Promise<{ roomCount: number; messageCount: number }>;
+  
+  // Admin operations
+  resetAllUnreadCounts(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -604,6 +607,16 @@ export class DatabaseStorage implements IStorage {
       }
     } catch (error) {
       console.warn("Error marking room as read (table may not exist yet):", error);
+    }
+  }
+
+  // Admin operations
+  async resetAllUnreadCounts(): Promise<void> {
+    try {
+      // Clear all read status records to reset unread counts
+      await db.delete(userRoomReadStatus);
+    } catch (error) {
+      console.warn("Error resetting unread counts (table may not exist yet):", error);
     }
   }
 }

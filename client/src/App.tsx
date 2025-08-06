@@ -11,6 +11,7 @@ import ChatRoom from "@/pages/chat-room";
 import FinancialOverview from "@/pages/financial-overview";
 import BankStatements from "@/pages/bank-statements";
 import Calendar from "@/pages/calendar";
+import AdminPanel from "@/pages/admin-panel";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -38,6 +39,7 @@ function Router() {
           <Route path="/financial" component={FinancialOverview} />
           <Route path="/bank-statements" component={BankStatements} />
           <Route path="/calendar" component={Calendar} />
+          <Route path="/admin" component={AdminPanel} />
         </>
       )}
       <Route component={NotFound} />
