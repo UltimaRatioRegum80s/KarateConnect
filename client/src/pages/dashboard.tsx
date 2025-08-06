@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useUnreadCounts } from "@/hooks/useUnreadCounts";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/layout/header";
 import ChatRoomCard from "@/components/chat/chat-room-card";
@@ -18,6 +19,9 @@ export default function Dashboard() {
     isLoading: boolean; 
     user: User | undefined; 
   };
+  
+  // Initialize real-time unread count updates
+  useUnreadCounts();
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -37,6 +41,8 @@ export default function Dashboard() {
   const { data: chatRooms, isLoading: roomsLoading } = useQuery({
     queryKey: ["/api/chat-rooms"],
     enabled: isAuthenticated,
+    refetchInterval: 5000, // Refresh every 5 seconds to update unread counts
+    refetchIntervalInBackground: true,
   }) as { data: (ChatRoom & { memberCount: number; messageCount: number; unreadCount: number })[] | undefined; isLoading: boolean };
 
   const initializeRooms = async () => {

@@ -1300,6 +1300,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
+  // Mark room as read endpoint
+  app.post('/api/chat-rooms/:roomId/mark-read', isAuthenticated, async (req, res) => {
+    try {
+      const { roomId } = req.params;
+      const userId = (req.session as any)?.userId;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+      
+      await storage.markRoomAsRead(roomId, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking room as read:", error);
+      res.status(500).json({ message: "Failed to mark room as read" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket server for real-time chat

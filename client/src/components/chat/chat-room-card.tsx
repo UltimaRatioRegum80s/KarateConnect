@@ -33,7 +33,7 @@ export default function ChatRoomCard({ room }: ChatRoomCardProps) {
               <i className="fas fa-comments text-blue-600 text-xl"></i>
               {(room.unreadCount ?? 0) > 0 && (
                 <Badge 
-                  className="absolute -top-2 -right-2 h-6 w-6 p-0 flex items-center justify-center bg-red-500 text-white text-xs rounded-full"
+                  className="absolute -top-2 -right-2 h-6 w-6 p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white text-xs rounded-full shadow-lg animate-pulse border-2 border-white transition-all duration-300 transform hover:scale-110"
                   data-testid={`badge-unread-${room.id}`}
                 >
                   {room.unreadCount! > 99 ? '99+' : room.unreadCount}
@@ -67,7 +67,7 @@ export default function ChatRoomCard({ room }: ChatRoomCardProps) {
               {room.messageCount > 0 ? `${room.messageCount} messages` : "No messages"}
             </div>
             {(room.unreadCount ?? 0) > 0 && (
-              <div className="text-red-600 font-medium text-sm">
+              <div className="text-red-600 font-medium text-sm animate-pulse">
                 ({room.unreadCount} unread)
               </div>
             )}

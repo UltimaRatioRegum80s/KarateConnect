@@ -34,6 +34,17 @@ export default function ChatRoom() {
     enabled: isAuthenticated && !!roomId,
   }) as { data: { name: string; description?: string } | undefined; isLoading: boolean };
 
+  // Mark room as read when entering (in addition to server-side marking)
+  useEffect(() => {
+    if (roomId && isAuthenticated) {
+      // This helps ensure immediate UI updates
+      fetch(`/api/chat-rooms/${roomId}/mark-read`, {
+        method: 'POST',
+        credentials: 'include',
+      }).catch(error => console.warn('Could not mark room as read:', error));
+    }
+  }, [roomId, isAuthenticated]);
+
   if (isLoading || roomLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
