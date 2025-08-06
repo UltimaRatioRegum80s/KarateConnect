@@ -91,14 +91,16 @@ export default function FinancialOverview() {
   });
 
   // Fetch financial data
-  const { data: summary, isLoading: summaryLoading } = useQuery<FinancialSummary>({
+  const { data: summary, isLoading: summaryLoading, error: summaryError } = useQuery<FinancialSummary>({
     queryKey: ["/api/financial/summary", currentYear],
     refetchOnWindowFocus: true,
+    throwOnError: false,
   });
 
-  const { data: entries = [], isLoading: entriesLoading } = useQuery<FinancialEntry[]>({
+  const { data: entries = [], isLoading: entriesLoading, error: entriesError } = useQuery<FinancialEntry[]>({
     queryKey: ["/api/financial/entries", currentYear],
     refetchOnWindowFocus: true,
+    throwOnError: false,
   });
 
   // Check if data comes from bank statements

@@ -84,10 +84,11 @@ export default function BankStatements() {
     }
   }, [isAuthenticated, isLoading, isAdmin, toast]);
 
-  const { data: statements, isLoading: statementsLoading } = useQuery({
+  const { data: statements, isLoading: statementsLoading, error: statementsError } = useQuery({
     queryKey: ["/api/bank-statements"],
     enabled: isAuthenticated && isAdmin,
-  }) as { data: BankStatement[] | undefined; isLoading: boolean };
+    throwOnError: false,
+  }) as { data: BankStatement[] | undefined; isLoading: boolean; error: Error | null };
 
   const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {

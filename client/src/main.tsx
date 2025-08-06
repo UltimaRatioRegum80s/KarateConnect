@@ -2,6 +2,18 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
+// Global error handler for unhandled promise rejections
+window.addEventListener('unhandledrejection', (event) => {
+  console.warn('Unhandled promise rejection:', event.reason);
+  // Prevent the default browser behavior (which logs the error to console)
+  event.preventDefault();
+});
+
+// Global error handler for uncaught errors
+window.addEventListener('error', (event) => {
+  console.error('Global error caught:', event.error);
+});
+
 console.log("NKF Portal: main.tsx loading");
 console.log("Window location:", window.location.href);
 console.log("Document readyState:", document.readyState);
