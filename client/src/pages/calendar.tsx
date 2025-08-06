@@ -21,7 +21,8 @@ import {
   CheckCircle,
   Loader2,
   Grid3X3,
-  Calendar1
+  Calendar1,
+  Home
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +37,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, getYear, setYear } from "date-fns";
+import { useLocation } from "wouter";
 
 const eventFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -53,6 +55,7 @@ export default function Calendar() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isAuthenticated, isLoading, user } = useAuth();
+  const [location, setLocation] = useLocation();
   
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"month" | "year">("month");
@@ -281,10 +284,26 @@ export default function Calendar() {
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <CalendarIcon className="h-6 w-6 text-green-600" />
-          <h1 className="text-2xl font-bold">NKF Calendar</h1>
-          <Badge variant="outline">{getYear(currentDate)}</Badge>
+        <div className="flex items-center space-x-4">
+          {/* Enhanced Home Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="relative flex items-center transition-all duration-300 hover:bg-blue-50 border-blue-200"
+            data-testid="button-home"
+            title="Go to Dashboard"
+            onClick={() => setLocation("/")}
+          >
+            <Home className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Dashboard</span>
+            <span className="sm:hidden">Home</span>
+          </Button>
+          
+          <div className="flex items-center space-x-2">
+            <CalendarIcon className="h-6 w-6 text-green-600" />
+            <h1 className="text-2xl font-bold">NKF Calendar</h1>
+            <Badge variant="outline">{getYear(currentDate)}</Badge>
+          </div>
         </div>
         
         <div className="flex items-center space-x-2">
