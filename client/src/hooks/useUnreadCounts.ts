@@ -5,7 +5,12 @@ export function useUnreadCounts() {
   const queryClient = useQueryClient();
   const [socket, setSocket] = useState<WebSocket | null>(null);
 
+  // Only create WebSocket connection if we're in a browser environment
+  const canUseWebSocket = typeof window !== 'undefined';
+
   useEffect(() => {
+    if (!canUseWebSocket) return;
+    
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws`;
     const ws = new WebSocket(wsUrl);
@@ -37,7 +42,7 @@ export function useUnreadCounts() {
     return () => {
       ws.close();
     };
-  }, [queryClient]);
+  }, [queryClient, canUseWebSocket]);
 
   return socket;
 }

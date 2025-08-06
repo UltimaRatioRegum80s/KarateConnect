@@ -53,8 +53,9 @@ export default function Header() {
                 }`}
                 data-testid="button-home"
                 title={location === "/" ? "Scroll to top" : "Go to Dashboard"}
-                onClick={() => {
+                onClick={(e) => {
                   if (location === "/") {
+                    e.preventDefault();
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }
                 }}
