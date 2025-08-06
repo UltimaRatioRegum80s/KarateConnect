@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { 
   Edit3, 
   Settings, 
@@ -37,6 +38,13 @@ export function DashboardAdminOverlay({ cardType, cardTitle, onUpdate }: Dashboa
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<any>({});
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    title: "",
+    description: "",
+    action: () => {},
+    variant: "default" as "default" | "destructive"
+  });
 
   // Financial Overview Admin Features
   const FinancialAdminControls = () => {
@@ -52,6 +60,16 @@ export function DashboardAdminOverlay({ cardType, cardTitle, onUpdate }: Dashboa
       toast({
         title: "Excel Export",
         description: "Financial report exported successfully"
+      });
+    };
+
+    const confirmUpdateProjections = () => {
+      setConfirmDialog({
+        open: true,
+        title: "Update Financial Projections",
+        description: "This will update the financial forecasts and budget allocations visible to all EXCO members. Continue?",
+        action: handleUpdateProjections,
+        variant: "default"
       });
     };
 
@@ -130,7 +148,7 @@ export function DashboardAdminOverlay({ cardType, cardTitle, onUpdate }: Dashboa
           </Button>
           
           <Button 
-            onClick={handleUpdateProjections}
+            onClick={confirmUpdateProjections}
             className="flex items-center space-x-2"
             data-testid="button-update-projections"
           >
@@ -500,6 +518,16 @@ export function DashboardAdminOverlay({ cardType, cardTitle, onUpdate }: Dashboa
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog(prev => ({...prev, open}))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        variant={confirmDialog.variant}
+        onConfirm={confirmDialog.action}
+      />
     </div>
   );
 }

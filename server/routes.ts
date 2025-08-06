@@ -1642,6 +1642,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin Audit Log API
+  app.post('/api/admin/audit-log', isAuthenticated, async (req: any, res) => {
+    try {
+      const { action, resourceType, resourceId, details } = req.body;
+      const adminUserId = req.session.userId;
+      
+      // In production, this would save to a dedicated audit_logs table
+      const auditEntry = {
+        id: Math.random().toString(36).substring(7),
+        adminUserId,
+        action,
+        resourceType,
+        resourceId,
+        details,
+        timestamp: new Date().toISOString(),
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.get('User-Agent') || 'unknown'
+      };
+      
+      // Log to console for now, in production save to database
+      console.log('ADMIN_AUDIT:', JSON.stringify(auditEntry, null, 2));
+      
+      res.json({ success: true, auditId: auditEntry.id });
+    } catch (error) {
+      console.error("Error logging admin action:", error);
+      res.status(500).json({ message: "Failed to log admin action" });
+    }
+  });
+
+  app.get('/api/admin/audit-log', isAuthenticated, async (req: any, res) => {
+    try {
+      const { resourceType, resourceId, limit = 50 } = req.query;
+      
+      // In production, this would query the audit_logs table
+      // For now, return mock audit entries
+      const mockAuditEntries = [
+        {
+          id: "audit_001",
+          adminUserId: req.session.userId,
+          action: "UPDATE_ROOM_INFO",
+          resourceType: "chat_room",
+          resourceId: "room_001",
+          details: { roomName: "General Discussion", changes: { name: "Updated Name" } },
+          timestamp: new Date().toISOString(),
+          adminName: "System Admin"
+        }
+      ];
+      
+      res.json({
+        entries: mockAuditEntries,
+        total: mockAuditEntries.length,
+        page: 1,
+        limit: parseInt(limit.toString())
+      });
+    } catch (error) {
+      console.error("Error fetching audit log:", error);
+      res.status(500).json({ message: "Failed to fetch audit log" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket server for real-time chat

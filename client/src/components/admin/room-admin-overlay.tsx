@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 
 import { 
   Edit3, 
@@ -81,6 +82,36 @@ export function RoomAdminOverlay({ room, onRoomUpdate }: RoomAdminOverlayProps) 
     pendingInvites: [] as string[]
   });
 
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    title: "",
+    description: "",
+    action: () => {},
+    variant: "default" as "default" | "destructive"
+  });
+
+  // Audit logging function
+  const logAdminAction = async (action: string, details: any) => {
+    try {
+      await fetch('/api/admin/audit-log', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          action,
+          resourceType: 'chat_room',
+          resourceId: room.id,
+          details,
+          timestamp: new Date().toISOString()
+        })
+      });
+    } catch (error) {
+      console.warn('Failed to log admin action:', error);
+    }
+  };
+
   // Update room information
   const handleUpdateRoomInfo = async () => {
     try {
@@ -94,6 +125,11 @@ export function RoomAdminOverlay({ room, onRoomUpdate }: RoomAdminOverlayProps) 
       });
 
       if (response.ok) {
+        await logAdminAction('UPDATE_ROOM_INFO', {
+          roomName: roomInfo.name,
+          changes: roomInfo
+        });
+        
         toast({
           title: "Room Updated",
           description: "Room information has been updated successfully"
@@ -109,7 +145,26 @@ export function RoomAdminOverlay({ room, onRoomUpdate }: RoomAdminOverlayProps) 
     }
   };
 
-  // Manage room settings
+  // Manage room settings with confirmation
+  const confirmUpdateSettings = () => {
+    const criticalChanges = [];
+    if (roomSettings.isLocked) criticalChanges.push("Lock room");
+    if (roomSettings.isArchived) criticalChanges.push("Archive room");
+    if (roomSettings.isMuted) criticalChanges.push("Mute room");
+
+    if (criticalChanges.length > 0) {
+      setConfirmDialog({
+        open: true,
+        title: "Confirm Room Settings Changes",
+        description: `You are about to: ${criticalChanges.join(", ")}. This will affect all room members. Continue?`,
+        action: handleUpdateSettings,
+        variant: "destructive"
+      });
+    } else {
+      handleUpdateSettings();
+    }
+  };
+
   const handleUpdateSettings = async () => {
     try {
       const response = await fetch(`/api/admin/rooms/${room.id}/settings`, {
@@ -122,6 +177,11 @@ export function RoomAdminOverlay({ room, onRoomUpdate }: RoomAdminOverlayProps) 
       });
 
       if (response.ok) {
+        await logAdminAction('UPDATE_ROOM_SETTINGS', {
+          roomName: room.name,
+          settings: roomSettings
+        });
+        
         toast({
           title: "Settings Updated",
           description: "Room settings have been applied successfully"
@@ -136,7 +196,17 @@ export function RoomAdminOverlay({ room, onRoomUpdate }: RoomAdminOverlayProps) 
     }
   };
 
-  // Reset room badges
+  // Reset room badges with confirmation
+  const confirmResetBadges = () => {
+    setConfirmDialog({
+      open: true,
+      title: "Reset Room Badges",
+      description: `This will clear all unread message notifications for "${room.name}" for all members. This action cannot be undone.`,
+      action: handleResetBadges,
+      variant: "default"
+    });
+  };
+
   const handleResetBadges = async () => {
     try {
       const response = await fetch(`/api/admin/rooms/${room.id}/reset-badges`, {
@@ -145,6 +215,11 @@ export function RoomAdminOverlay({ room, onRoomUpdate }: RoomAdminOverlayProps) 
       });
 
       if (response.ok) {
+        await logAdminAction('RESET_ROOM_BADGES', {
+          roomName: room.name,
+          previousUnreadCount: room.unreadCount || 0
+        });
+        
         toast({
           title: "Badges Reset",
           description: "All notification badges for this room have been cleared"
@@ -159,7 +234,19 @@ export function RoomAdminOverlay({ room, onRoomUpdate }: RoomAdminOverlayProps) 
     }
   };
 
-  // Send bot message
+  // Send bot message with confirmation
+  const confirmSendBotMessage = () => {
+    if (!botMessage.content.trim()) return;
+    
+    setConfirmDialog({
+      open: true,
+      title: "Send Official Message",
+      description: `Send message as "${botMessage.sender === 'bot' ? 'Federation Bot' : 'NKF Federation'}" to all room members? This will appear as an official announcement.`,
+      action: handleSendBotMessage,
+      variant: "default"
+    });
+  };
+
   const handleSendBotMessage = async () => {
     if (!botMessage.content.trim()) return;
 
@@ -177,6 +264,12 @@ export function RoomAdminOverlay({ room, onRoomUpdate }: RoomAdminOverlayProps) 
       });
 
       if (response.ok) {
+        await logAdminAction('SEND_BOT_MESSAGE', {
+          roomName: room.name,
+          sender: botMessage.sender,
+          messagePreview: botMessage.content.substring(0, 100)
+        });
+        
         toast({
           title: "Message Sent",
           description: `Message sent as ${botMessage.sender === 'bot' ? 'Federation Bot' : 'NKF Federation'}`
@@ -421,14 +514,14 @@ export function RoomAdminOverlay({ room, onRoomUpdate }: RoomAdminOverlayProps) 
       <div className="flex justify-between pt-4 border-t">
         <Button 
           variant="outline" 
-          onClick={handleResetBadges}
+          onClick={confirmResetBadges}
           data-testid="button-reset-room-badges"
         >
           <BadgeIcon className="h-4 w-4 mr-2" />
           Reset Badges
         </Button>
         
-        <Button onClick={handleUpdateSettings} data-testid="button-update-room-settings">
+        <Button onClick={confirmUpdateSettings} data-testid="button-update-room-settings">
           <Save className="h-4 w-4 mr-2" />
           Apply Settings
         </Button>
@@ -500,7 +593,7 @@ export function RoomAdminOverlay({ room, onRoomUpdate }: RoomAdminOverlayProps) 
 
       <div className="flex justify-end pt-4 border-t">
         <Button 
-          onClick={handleSendBotMessage}
+          onClick={confirmSendBotMessage}
           disabled={!botMessage.content.trim()}
           data-testid="button-send-bot-message"
         >
@@ -569,6 +662,16 @@ export function RoomAdminOverlay({ room, onRoomUpdate }: RoomAdminOverlayProps) 
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog(prev => ({...prev, open}))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        variant={confirmDialog.variant}
+        onConfirm={confirmDialog.action}
+      />
     </div>
   );
 }
