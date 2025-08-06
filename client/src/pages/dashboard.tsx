@@ -129,38 +129,38 @@ export default function Dashboard() {
 
         {/* Statistics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Recent Messages */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center mb-4">
-                <div className="p-2 bg-blue-50 rounded-lg mr-3">
-                  <i className="fas fa-message text-blue-600 text-lg"></i>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900">Recent Messages</h3>
-              </div>
-              
-              <div className="text-center">
-                <div className="text-3xl font-bold text-gray-900 mb-1">
-                  {chatRooms ? chatRooms.reduce((total: number, room: any) => total + (room.messageCount || 0), 0) : 0}
-                </div>
-                <p className="text-sm text-gray-600">Total messages</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Active Polls */}
+          {/* Financial Summary */}
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center mb-4">
                 <div className="p-2 bg-green-50 rounded-lg mr-3">
-                  <i className="fas fa-poll text-emerald-500 text-lg"></i>
+                  <DollarSign className="text-green-600 h-5 w-5" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">Active Polls</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Budget Status</h3>
               </div>
               
               <div className="text-center">
-                <div className="text-3xl font-bold text-gray-900 mb-1">0</div>
-                <p className="text-sm text-gray-600">No active polls</p>
+                <div className="text-3xl font-bold text-green-600 mb-1">
+                  85%
+                </div>
+                <p className="text-sm text-gray-600">Budget utilized</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Upcoming Events */}
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="p-2 bg-purple-50 rounded-lg mr-3">
+                  <Calendar className="text-purple-600 h-5 w-5" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Next Event</h3>
+              </div>
+              
+              <div className="text-center">
+                <div className="text-3xl font-bold text-purple-600 mb-1">5</div>
+                <p className="text-sm text-gray-600">Days until next tournament</p>
               </div>
             </CardContent>
           </Card>
@@ -169,17 +169,17 @@ export default function Dashboard() {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center mb-4">
-                <div className="p-2 bg-purple-50 rounded-lg mr-3">
-                  <i className="fas fa-users text-purple-500 text-lg"></i>
+                <div className="p-2 bg-blue-50 rounded-lg mr-3">
+                  <Users className="text-blue-600 h-5 w-5" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900">EXCO Members</h3>
               </div>
               
               <div className="text-center">
                 <div className="text-3xl font-bold text-gray-900 mb-1">
-                  {chatRooms ? Math.max(...(chatRooms.map((room: any) => room.memberCount || 0).concat([1]))) : 1}
+                  8
                 </div>
-                <p className="text-sm text-gray-600">Active members</p>
+                <p className="text-sm text-gray-600">Active committee members</p>
               </div>
             </CardContent>
           </Card>
