@@ -4,7 +4,10 @@ import "./index.css";
 
 // Global error handler for unhandled promise rejections
 window.addEventListener('unhandledrejection', (event) => {
-  console.warn('Unhandled promise rejection:', event.reason);
+  // Only log meaningful errors, not development-related rejections
+  if (event.reason && !event.reason.toString().includes('[vite]')) {
+    console.warn('Unhandled promise rejection:', event.reason);
+  }
   // Prevent the default browser behavior (which logs the error to console)
   event.preventDefault();
 });

@@ -636,8 +636,8 @@ export class DatabaseStorage implements IStorage {
 
   async getUserCount(): Promise<number> {
     try {
-      const result = await db.select().from(users);
-      return result.length;
+      const userResults = await db.select().from(users);
+      return userResults.length;
     } catch (error) {
       console.warn("Error getting user count (table may not exist yet):", error);
       return 9; // Default EXCO member count
@@ -646,8 +646,8 @@ export class DatabaseStorage implements IStorage {
 
   async getTotalMessageCount(): Promise<number> {
     try {
-      const result = await db.select().from(messages);
-      return result.length;
+      const messageResults = await db.select().from(messages);
+      return messageResults.length;
     } catch (error) {
       console.warn("Error getting message count (table may not exist yet):", error);
       return 147; // Mock count
@@ -657,11 +657,11 @@ export class DatabaseStorage implements IStorage {
   async getTotalUnreadCount(): Promise<number> {
     try {
       // Sum unread counts across all users and rooms
-      const messages = await db.select().from(messages);
-      const readStatus = await db.select().from(userRoomReadStatus);
+      const messagesResult = await db.select().from(messages);
+      const readStatusResult = await db.select().from(userRoomReadStatus);
       
       // Calculate unread count (simplified)
-      return Math.max(0, messages.length - readStatus.length);
+      return Math.max(0, messagesResult.length - readStatusResult.length);
     } catch (error) {
       console.warn("Error getting unread count (table may not exist yet):", error);
       return 23; // Mock count
@@ -670,8 +670,8 @@ export class DatabaseStorage implements IStorage {
 
   async getBankStatementCount(): Promise<number> {
     try {
-      const result = await db.select().from(bankStatements);
-      return result.length;
+      const statementResults = await db.select().from(bankStatements);
+      return statementResults.length;
     } catch (error) {
       console.warn("Error getting bank statement count (table may not exist yet):", error);
       return 8; // Mock count
