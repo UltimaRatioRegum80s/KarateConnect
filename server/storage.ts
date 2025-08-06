@@ -107,6 +107,7 @@ export interface IStorage {
   
   // Admin operations
   resetAllUnreadCounts(): Promise<void>;
+  resetRoomBadges(roomId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -617,6 +618,15 @@ export class DatabaseStorage implements IStorage {
       await db.delete(userRoomReadStatus);
     } catch (error) {
       console.warn("Error resetting unread counts (table may not exist yet):", error);
+    }
+  }
+
+  async resetRoomBadges(roomId: string): Promise<void> {
+    try {
+      // Clear read status records for specific room
+      await db.delete(userRoomReadStatus).where(eq(userRoomReadStatus.roomId, roomId));
+    } catch (error) {
+      console.warn("Error resetting room badges (table may not exist yet):", error);
     }
   }
 }

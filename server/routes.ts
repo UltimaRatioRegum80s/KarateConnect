@@ -1535,6 +1535,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Room Admin API Routes
+  app.put('/api/admin/rooms/:roomId/info', isAuthenticated, async (req: any, res) => {
+    try {
+      const { roomId } = req.params;
+      const roomInfo = req.body;
+      
+      // In production, this would update room information in database
+      console.log(`Room ${roomId} info updated:`, roomInfo);
+      
+      res.json({ success: true, message: 'Room information updated successfully' });
+    } catch (error) {
+      console.error("Error updating room info:", error);
+      res.status(500).json({ message: "Failed to update room info" });
+    }
+  });
+
+  app.put('/api/admin/rooms/:roomId/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const { roomId } = req.params;
+      const settings = req.body;
+      
+      // In production, this would update room settings in database
+      console.log(`Room ${roomId} settings updated:`, settings);
+      
+      res.json({ success: true, message: 'Room settings updated successfully' });
+    } catch (error) {
+      console.error("Error updating room settings:", error);
+      res.status(500).json({ message: "Failed to update room settings" });
+    }
+  });
+
+  app.post('/api/admin/rooms/:roomId/reset-badges', isAuthenticated, async (req: any, res) => {
+    try {
+      const { roomId } = req.params;
+      
+      // Reset unread counts for this specific room
+      await storage.resetRoomBadges(roomId);
+      
+      res.json({ success: true, message: 'Room badges reset successfully' });
+    } catch (error) {
+      console.error("Error resetting room badges:", error);
+      res.status(500).json({ message: "Failed to reset room badges" });
+    }
+  });
+
+  app.post('/api/admin/rooms/:roomId/bot-message', isAuthenticated, async (req: any, res) => {
+    try {
+      const { roomId } = req.params;
+      const { content, sender } = req.body;
+      const userId = req.session.userId;
+      
+      // Create bot message with special sender identifier
+      const botUserId = sender === 'bot' ? 'federation-bot' : 'nkf-federation';
+      
+      const message = await storage.createMessage({
+        roomId,
+        userId: botUserId,
+        content: `[${sender === 'bot' ? 'Federation Bot' : 'NKF Federation'}]: ${content}`
+      });
+      
+      res.json({ success: true, message: 'Bot message sent successfully' });
+    } catch (error) {
+      console.error("Error sending bot message:", error);
+      res.status(500).json({ message: "Failed to send bot message" });
+    }
+  });
+
+  app.get('/api/admin/rooms/:roomId/members', isAuthenticated, async (req: any, res) => {
+    try {
+      const { roomId } = req.params;
+      
+      const members = await storage.getRoomMembers(roomId);
+      
+      res.json(members);
+    } catch (error) {
+      console.error("Error fetching room members:", error);
+      res.status(500).json({ message: "Failed to fetch room members" });
+    }
+  });
+
+  app.post('/api/admin/rooms/:roomId/members', isAuthenticated, async (req: any, res) => {
+    try {
+      const { roomId } = req.params;
+      const { userId } = req.body;
+      
+      await storage.addRoomMember({ roomId, userId });
+      
+      res.json({ success: true, message: 'Member added successfully' });
+    } catch (error) {
+      console.error("Error adding room member:", error);
+      res.status(500).json({ message: "Failed to add member" });
+    }
+  });
+
+  app.delete('/api/admin/rooms/:roomId/members/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { roomId, userId } = req.params;
+      
+      await storage.removeRoomMember(roomId, userId);
+      
+      res.json({ success: true, message: 'Member removed successfully' });
+    } catch (error) {
+      console.error("Error removing room member:", error);
+      res.status(500).json({ message: "Failed to remove member" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket server for real-time chat

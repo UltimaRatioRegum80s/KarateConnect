@@ -1,6 +1,8 @@
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useAdmin } from "@/contexts/AdminContext";
+import { RoomAdminOverlay } from "@/components/admin/room-admin-overlay";
 
 interface ChatRoomCardProps {
   room: {
@@ -16,6 +18,7 @@ interface ChatRoomCardProps {
 
 export default function ChatRoomCard({ room }: ChatRoomCardProps) {
   const [, setLocation] = useLocation();
+  const { isAdminMode } = useAdmin();
 
   const handleClick = () => {
     setLocation(`/chat/${room.id}`);
@@ -23,7 +26,7 @@ export default function ChatRoomCard({ room }: ChatRoomCardProps) {
 
   return (
     <Card 
-      className="hover:shadow-lg transition-shadow cursor-pointer group"
+      className="hover:shadow-lg transition-shadow cursor-pointer group relative"
       onClick={handleClick}
     >
       <CardContent className="p-6">
@@ -73,6 +76,13 @@ export default function ChatRoomCard({ room }: ChatRoomCardProps) {
             )}
           </div>
         </div>
+        
+        {/* Admin Overlay */}
+        {isAdminMode && (
+          <div onClick={(e) => e.stopPropagation()}>
+            <RoomAdminOverlay room={room} />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
