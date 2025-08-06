@@ -1061,12 +1061,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const index = bankStatementsMemory.findIndex(s => s.id === id);
       
+      console.log(`Delete request for bank statement ${id}, found at index: ${index}`);
+      console.log(`Current statements in memory: ${bankStatementsMemory.length}`);
+      
       if (index === -1) {
         return res.status(404).json({ message: "Bank statement not found" });
       }
 
       // Remove from memory
-      bankStatementsMemory.splice(index, 1);
+      const deletedStatement = bankStatementsMemory.splice(index, 1)[0];
+      
+      console.log(`Bank statement deleted successfully:`, {
+        id: deletedStatement.id,
+        fileName: deletedStatement.fileName,
+        remainingStatements: bankStatementsMemory.length
+      });
 
       res.json({ message: "Bank statement deleted successfully" });
     } catch (error) {

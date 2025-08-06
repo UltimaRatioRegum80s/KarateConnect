@@ -135,9 +135,20 @@ export default function BankStatements() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest(`/api/bank-statements/${id}`, {
+      const response = await fetch(`/api/bank-statements/${id}`, {
         method: "DELETE",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Failed to delete statement" }));
+        throw new Error(error.message || "Failed to delete statement");
+      }
+      
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -240,7 +251,7 @@ export default function BankStatements() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header user={user} showLogout />
+      <Header />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
@@ -357,8 +368,12 @@ export default function BankStatements() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => deleteMutation.mutate(statement.id)}
+                              onClick={() => {
+                                console.log('Delete button clicked for statement:', statement.id);
+                                deleteMutation.mutate(statement.id);
+                              }}
                               disabled={deleteMutation.isPending}
+                              data-testid={`button-delete-${statement.id}`}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
