@@ -265,52 +265,54 @@ export default function EnhancedDashboard() {
 
           {/* Bank Statements */}
           <AdminEditOverlay editHint="Upload & analyze statements">
-            <Card className="relative">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Bank Statements</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">3 Statements</div>
-                <p className="text-xs text-muted-foreground">
-                  Last processed: 2 days ago
-                </p>
-                <div className="mt-4 space-y-2">
-                  <div className="flex justify-between items-center text-sm">
-                    <span>January 2025</span>
-                    <Badge variant="secondary" className="text-xs">Processed</Badge>
+            <Link href="/bank-statements">
+              <Card className="relative cursor-pointer hover:shadow-md transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Bank Statements</CardTitle>
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">3 Statements</div>
+                  <p className="text-xs text-muted-foreground">
+                    Last processed: 2 days ago
+                  </p>
+                  <div className="mt-4 space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span>January 2025</span>
+                      <Badge variant="secondary" className="text-xs">Processed</Badge>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span>December 2024</span>
+                      <Badge variant="secondary" className="text-xs">Processed</Badge>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span>November 2024</span>
+                      <Badge variant="outline" className="text-xs">Pending</Badge>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span>December 2024</span>
-                    <Badge variant="secondary" className="text-xs">Processed</Badge>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span>November 2024</span>
-                    <Badge variant="outline" className="text-xs">Pending</Badge>
-                  </div>
-                </div>
+                  
+                  {user?.role === 'admin' && (
+                    <div className="mt-4 flex space-x-2">
+                      <Button size="sm" variant="outline" className="flex-1" onClick={(e) => e.stopPropagation()}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1" onClick={(e) => e.stopPropagation()}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Analyze
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
                 
-                {user?.role === 'admin' && (
-                  <div className="mt-4 flex space-x-2">
-                    <Button size="sm" variant="outline" className="flex-1">
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload
-                    </Button>
-                    <Button size="sm" variant="outline" className="flex-1">
-                      <FileText className="h-4 w-4 mr-2" />
-                      Analyze
-                    </Button>
-                  </div>
+                {isAdminMode && (
+                  <DashboardAdminOverlay 
+                    cardType="bank-statements" 
+                    cardTitle="Bank Statements"
+                  />
                 )}
-              </CardContent>
-              
-              {isAdminMode && (
-                <DashboardAdminOverlay 
-                  cardType="bank-statements" 
-                  cardTitle="Bank Statements"
-                />
-              )}
-            </Card>
+              </Card>
+            </Link>
           </AdminEditOverlay>
         </div>
 
