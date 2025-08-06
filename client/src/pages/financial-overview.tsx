@@ -18,6 +18,7 @@ import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { useLocation } from "wouter";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -28,7 +29,8 @@ import {
   AlertCircle,
   Banknote,
   BarChart3,
-  LineChart
+  LineChart,
+  Home
 } from "lucide-react";
 import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
@@ -75,6 +77,7 @@ type EntryFormData = z.infer<typeof entrySchema>;
 export default function FinancialOverview() {
   const { toast } = useToast();
   const { isAdminMode } = useAdmin();
+  const [location, setLocation] = useLocation();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const currentYear = new Date().getFullYear().toString();
 
@@ -234,15 +237,31 @@ export default function FinancialOverview() {
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Banknote className="h-6 w-6 text-green-600" />
-          <h1 className="text-2xl font-bold">Financial Overview</h1>
-          <Badge variant="outline">{currentYear}</Badge>
-          {hasBankStatementData && (
-            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-              📊 Live Bank Data
-            </Badge>
-          )}
+        <div className="flex items-center space-x-4">
+          {/* Enhanced Home Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="relative flex items-center transition-all duration-300 hover:bg-blue-50 border-blue-200"
+            data-testid="button-home"
+            title="Go to Dashboard"
+            onClick={() => setLocation("/")}
+          >
+            <Home className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Dashboard</span>
+            <span className="sm:hidden">Home</span>
+          </Button>
+          
+          <div className="flex items-center space-x-2">
+            <Banknote className="h-6 w-6 text-green-600" />
+            <h1 className="text-2xl font-bold">Financial Overview</h1>
+            <Badge variant="outline">{currentYear}</Badge>
+            {hasBankStatementData && (
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                📊 Live Bank Data
+              </Badge>
+            )}
+          </div>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           {isAdminMode && (
