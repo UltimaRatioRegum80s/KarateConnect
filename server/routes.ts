@@ -713,66 +713,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Helper functions for bank statement integration
-  const calculateBankStatementTotals = () => {
+  const calculateBankStatementTotals = async () => {
     let totalIncome = 0;
     let totalExpenses = 0;
     let currentBalance = 125000; // Starting balance
 
-    bankStatementsMemory.forEach(statement => {
-      if (statement.status === 'processed' && statement.analysis) {
-        totalIncome += statement.analysis.totalIncome || 0;
-        totalExpenses += statement.analysis.totalExpenses || 0;
-      }
-    });
+    try {
+      const statements = await storage.getBankStatements();
+      
+      statements.forEach(statement => {
+        if (statement.status === 'processed' && statement.analysis) {
+          const analysis = statement.analysis as any;
+          totalIncome += analysis.totalIncome || 0;
+          totalExpenses += analysis.totalExpenses || 0;
+        }
+      });
 
-    currentBalance = currentBalance + totalIncome - totalExpenses;
+      currentBalance = currentBalance + totalIncome - totalExpenses;
+    } catch (error) {
+      console.error('Error calculating bank statement totals:', error);
+    }
 
     return { totalIncome, totalExpenses, currentBalance };
   };
 
-  const extractFinancialEntriesFromBankStatements = (): any[] => {
+  const extractFinancialEntriesFromBankStatements = async (): Promise<any[]> => {
     const entries: any[] = [];
     const currentYear = new Date().getFullYear().toString();
 
-    bankStatementsMemory.forEach(statement => {
-      if (statement.status === 'processed' && statement.analysis) {
-        // Add income entries from bank statement
-        statement.analysis.topIncomeCategories.forEach((category: any, index: number) => {
-          entries.push({
-            id: `bank-income-${statement.id}-${index}`,
-            type: 'income',
-            category: category.category,
-            description: `${category.category} (from ${statement.fileName})`,
-            amount: category.amount.toString(),
-            currency: 'NAD',
-            date: statement.uploadedAt,
-            isProjected: 'false',
-            financialYear: currentYear,
-            createdBy: 'bank-statement',
-            createdAt: statement.uploadedAt,
-            updatedAt: statement.uploadedAt
+    try {
+      const statements = await storage.getBankStatements();
+      
+      statements.forEach(statement => {
+        if (statement.status === 'processed' && statement.analysis) {
+          const analysis = statement.analysis as any;
+          
+          // Add income entries from bank statement
+          analysis.topIncomeCategories?.forEach((category: any, index: number) => {
+            entries.push({
+              id: `bank-income-${statement.id}-${index}`,
+              type: 'income',
+              category: category.category,
+              description: `${category.category} (from ${statement.fileName})`,
+              amount: category.amount.toString(),
+              currency: 'NAD',
+              date: statement.uploadedAt || statement.createdAt,
+              isProjected: 'false',
+              financialYear: currentYear,
+              createdBy: 'bank-statement',
+              createdAt: statement.uploadedAt || statement.createdAt,
+              updatedAt: statement.updatedAt
+            });
           });
-        });
 
-        // Add expense entries from bank statement  
-        statement.analysis.topExpenseCategories.forEach((category: any, index: number) => {
-          entries.push({
-            id: `bank-expense-${statement.id}-${index}`,
-            type: 'expense',
-            category: category.category,
-            description: `${category.category} (from ${statement.fileName})`,
-            amount: category.amount.toString(),
-            currency: 'NAD',
-            date: statement.uploadedAt,
-            isProjected: 'false',
-            financialYear: currentYear,
-            createdBy: 'bank-statement',
-            createdAt: statement.uploadedAt,
-            updatedAt: statement.uploadedAt
+          // Add expense entries from bank statement  
+          analysis.topExpenseCategories?.forEach((category: any, index: number) => {
+            entries.push({
+              id: `bank-expense-${statement.id}-${index}`,
+              type: 'expense',
+              category: category.category,
+              description: `${category.category} (from ${statement.fileName})`,
+              amount: category.amount.toString(),
+              currency: 'NAD',
+              date: statement.uploadedAt || statement.createdAt,
+              isProjected: 'false',
+              financialYear: currentYear,
+              createdBy: 'bank-statement',
+              createdAt: statement.uploadedAt || statement.createdAt,
+              updatedAt: statement.updatedAt
+            });
           });
-        });
-      }
-    });
+        }
+      });
+    } catch (error) {
+      console.error('Error extracting financial entries from bank statements:', error);
+    }
 
     return entries;
   };
@@ -786,7 +801,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseSummary = await storage.getFinancialSummary(year);
       
       // Calculate totals from bank statements
-      const bankStatementTotals = calculateBankStatementTotals();
+      const bankStatementTotals = await calculateBankStatementTotals();
       
       // Merge bank statement data with base summary
       const enhancedSummary = {
@@ -817,7 +832,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseEntries = await storage.getFinancialEntries(year);
       
       // Get entries from bank statements
-      const bankStatementEntries = extractFinancialEntriesFromBankStatements();
+      const bankStatementEntries = await extractFinancialEntriesFromBankStatements();
       
       // Combine both sources, prioritizing bank statement data
       const combinedEntries = [...bankStatementEntries, ...baseEntries];
@@ -868,93 +883,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
-  // In-memory storage for bank statements (admin only)
-  const bankStatementsMemory: any[] = [];
+  // Initialize sample bank statements in database if none exist
+  const initializeSampleBankStatements = async () => {
+    try {
+      const existingStatements = await storage.getBankStatements();
+      
+      if (existingStatements.length === 0) {
+        const sampleStatements = [
+          {
+            fileName: 'sample-statement-january-2025.pdf',
+            originalName: 'NKF_Statement_Jan_2025.pdf',
+            fileSize: 125000,
+            mimeType: 'application/pdf',
+            uploadedBy: '1002', // System Admin user ID
+            bankName: 'Bank Windhoek',
+            accountNumber: '****1234',
+            statementPeriod: 'January 2025',
+            totalIncome: '42500.00',
+            totalExpenses: '18750.00',
+            netAmount: '23750.00',
+            transactionCount: 67,
+            isProcessed: true,
+            status: 'processed',
+            processingNotes: 'Sample statement with realistic NKF data',
+            analysis: {
+              totalIncome: 42500,
+              totalExpenses: 18750,
+              topIncomeCategories: [
+                { category: 'Membership Fees', amount: 17000 },
+                { category: 'Tournament Entry Fees', amount: 12750 },
+                { category: 'Sponsorships', amount: 8500 },
+                { category: 'Training Camps', amount: 4250 }
+              ],
+              topExpenseCategories: [
+                { category: 'Equipment & Supplies', amount: 6562.50 },
+                { category: 'Venue Rentals', amount: 4687.50 },
+                { category: 'Travel & Accommodation', amount: 3750 },
+                { category: 'Administrative Costs', amount: 2812.50 },
+                { category: 'Other Expenses', amount: 937.50 }
+              ]
+            }
+          },
+          {
+            fileName: 'sample-statement-december-2024.pdf',
+            originalName: 'NKF_Statement_Dec_2024.pdf',
+            fileSize: 98000,
+            mimeType: 'application/pdf',
+            uploadedBy: '1002', // System Admin user ID
+            bankName: 'FNB Namibia',
+            accountNumber: '****5678',
+            statementPeriod: 'December 2024',
+            totalIncome: '38200.00',
+            totalExpenses: '22100.00',
+            netAmount: '16100.00',
+            transactionCount: 54,
+            isProcessed: true,
+            status: 'processed',
+            processingNotes: 'Sample statement with realistic NKF data',
+            analysis: {
+              totalIncome: 38200,
+              totalExpenses: 22100,
+              topIncomeCategories: [
+                { category: 'Championship Fees', amount: 15280 },
+                { category: 'Membership Fees', amount: 11460 },
+                { category: 'Corporate Sponsorships', amount: 7640 },
+                { category: 'Equipment Sales', amount: 3820 }
+              ],
+              topExpenseCategories: [
+                { category: 'National Team Costs', amount: 7735 },
+                { category: 'Equipment & Supplies', amount: 5525 },
+                { category: 'Competition Venues', amount: 4420 },
+                { category: 'Officials & Referees', amount: 3315 },
+                { category: 'Administration', amount: 1105 }
+              ]
+            }
+          }
+        ];
 
-  // Add sample bank statement data for testing
-  const initializeSampleBankStatements = () => {
-    if (bankStatementsMemory.length === 0) {
-      const sampleStatements = [
-        {
-          id: 'sample-2025-01',
-          fileName: 'sample-statement-january-2025.pdf',
-          originalName: 'NKF_Statement_Jan_2025.pdf',
-          fileSize: 125000,
-          mimeType: 'application/pdf',
-          uploadedBy: 'system',
-          bankName: 'Bank Windhoek',
-          accountNumber: '****1234',
-          statementPeriod: 'January 2025',
-          totalIncome: '42500.00',
-          totalExpenses: '18750.00',
-          netAmount: '23750.00',
-          transactionCount: 67,
-          isProcessed: true,
-          status: 'processed',
-          processingNotes: 'Sample statement with realistic NKF data',
-          createdAt: new Date('2025-01-01').toISOString(),
-          updatedAt: new Date().toISOString(),
-          uploadedAt: new Date('2025-01-01').toISOString(),
-          analysis: {
-            totalIncome: 42500,
-            totalExpenses: 18750,
-            topIncomeCategories: [
-              { category: 'Membership Fees', amount: 17000 },
-              { category: 'Tournament Entry Fees', amount: 12750 },
-              { category: 'Sponsorships', amount: 8500 },
-              { category: 'Training Camps', amount: 4250 }
-            ],
-            topExpenseCategories: [
-              { category: 'Equipment & Supplies', amount: 6562.50 },
-              { category: 'Venue Rentals', amount: 4687.50 },
-              { category: 'Travel & Accommodation', amount: 3750 },
-              { category: 'Administrative Costs', amount: 2812.50 },
-              { category: 'Other Expenses', amount: 937.50 }
-            ]
-          }
-        },
-        {
-          id: 'sample-2024-12',
-          fileName: 'sample-statement-december-2024.pdf',
-          originalName: 'NKF_Statement_Dec_2024.pdf',
-          fileSize: 98000,
-          mimeType: 'application/pdf',
-          uploadedBy: 'system',
-          bankName: 'FNB Namibia',
-          accountNumber: '****5678',
-          statementPeriod: 'December 2024',
-          totalIncome: '38200.00',
-          totalExpenses: '22100.00',
-          netAmount: '16100.00',
-          transactionCount: 54,
-          isProcessed: true,
-          status: 'processed',
-          processingNotes: 'Sample statement with realistic NKF data',
-          createdAt: new Date('2024-12-01').toISOString(),
-          updatedAt: new Date().toISOString(),
-          uploadedAt: new Date('2024-12-01').toISOString(),
-          analysis: {
-            totalIncome: 38200,
-            totalExpenses: 22100,
-            topIncomeCategories: [
-              { category: 'Championship Fees', amount: 15280 },
-              { category: 'Membership Fees', amount: 11460 },
-              { category: 'Corporate Sponsorships', amount: 7640 },
-              { category: 'Equipment Sales', amount: 3820 }
-            ],
-            topExpenseCategories: [
-              { category: 'National Team Costs', amount: 7735 },
-              { category: 'Equipment & Supplies', amount: 5525 },
-              { category: 'Competition Venues', amount: 4420 },
-              { category: 'Officials & Referees', amount: 3315 },
-              { category: 'Administration', amount: 1105 }
-            ]
-          }
+        for (const statement of sampleStatements) {
+          await storage.createBankStatement(statement);
         }
-      ];
-
-      bankStatementsMemory.push(...sampleStatements);
-      console.log(`Initialized ${sampleStatements.length} sample bank statements in memory`);
+        
+        console.log(`Initialized ${sampleStatements.length} sample bank statements in database`);
+      }
+    } catch (error) {
+      console.error('Error initializing sample bank statements:', error);
     }
   };
 
@@ -970,9 +983,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.session.userId;
       const { bankName, statementPeriod } = req.body;
 
-      // Create statement record in memory
-      const statement = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      // Create statement record in database
+      const statementData = {
         fileName: req.file.filename,
         originalName: req.file.originalname,
         fileSize: req.file.size,
@@ -989,31 +1001,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'processing',
         processingNotes: null,
         analysis: null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        uploadedAt: new Date().toISOString(),
       };
 
-      // Store in memory
-      bankStatementsMemory.push(statement);
+      // Store in database
+      const statement = await storage.createBankStatement(statementData);
       
-      console.log(`Bank statement uploaded and stored in memory:`, {
+      console.log(`Bank statement uploaded and stored in database:`, {
         id: statement.id,
         fileName: statement.fileName,
-        bankName: statement.bankName,
-        memoryLength: bankStatementsMemory.length
+        bankName: statement.bankName
       });
 
       // Enhanced mock processing with financial data structure
-      setTimeout(() => {
-        const stmt = bankStatementsMemory.find(s => s.id === statement.id);
-        if (stmt) {
+      setTimeout(async () => {
+        try {
           const totalIncome = Math.random() * 50000 + 10000;
           const totalExpenses = Math.random() * 30000 + 5000;
           
           // Create analysis structure required by financial calculations
-          stmt.status = 'processed';
-          stmt.analysis = {
+          const analysisData = {
             totalIncome: totalIncome,
             totalExpenses: totalExpenses,
             topIncomeCategories: [
@@ -1031,21 +1037,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ]
           };
           
-          // Keep backward compatibility
-          stmt.totalIncome = totalIncome.toFixed(2);
-          stmt.totalExpenses = totalExpenses.toFixed(2);
-          stmt.netAmount = (totalIncome - totalExpenses).toFixed(2);
-          stmt.transactionCount = Math.floor(Math.random() * 100) + 20;
-          stmt.isProcessed = true;
-          stmt.processingNotes = "Automatically processed with financial analysis";
-          stmt.updatedAt = new Date().toISOString();
-          stmt.uploadedAt = new Date().toISOString();
-          
-          console.log(`Bank statement ${stmt.id} processed with analysis:`, {
-            totalIncome: stmt.totalIncome,
-            totalExpenses: stmt.totalExpenses,
-            netAmount: stmt.netAmount
+          // Update statement in database
+          await storage.updateBankStatement(statement.id, {
+            status: 'processed',
+            analysis: analysisData,
+            totalIncome: totalIncome.toFixed(2),
+            totalExpenses: totalExpenses.toFixed(2),
+            netAmount: (totalIncome - totalExpenses).toFixed(2),
+            transactionCount: Math.floor(Math.random() * 100) + 20,
+            isProcessed: true,
+            processingNotes: "Automatically processed with financial analysis"
           });
+          
+          console.log(`Bank statement ${statement.id} processed with analysis:`, {
+            totalIncome: totalIncome.toFixed(2),
+            totalExpenses: totalExpenses.toFixed(2),
+            netAmount: (totalIncome - totalExpenses).toFixed(2)
+          });
+        } catch (error) {
+          console.error(`Error processing bank statement ${statement.id}:`, error);
         }
       }, 3000); // Process after 3 seconds
 
@@ -1059,22 +1069,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/bank-statements/:id', isAuthenticated, isAdminUser, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const index = bankStatementsMemory.findIndex(s => s.id === id);
       
-      console.log(`Delete request for bank statement ${id}, found at index: ${index}`);
-      console.log(`Current statements in memory: ${bankStatementsMemory.length}`);
-      
-      if (index === -1) {
+      // Check if statement exists
+      const statement = await storage.getBankStatement(id);
+      if (!statement) {
         return res.status(404).json({ message: "Bank statement not found" });
       }
 
-      // Remove from memory
-      const deletedStatement = bankStatementsMemory.splice(index, 1)[0];
+      // Remove from database
+      await storage.deleteBankStatement(id);
       
       console.log(`Bank statement deleted successfully:`, {
-        id: deletedStatement.id,
-        fileName: deletedStatement.fileName,
-        remainingStatements: bankStatementsMemory.length
+        id: statement.id,
+        fileName: statement.fileName
       });
 
       res.json({ message: "Bank statement deleted successfully" });
@@ -1084,10 +1091,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get bank statements from memory
+  // Get bank statements from database
   app.get('/api/bank-statements', isAuthenticated, isAdminUser, async (req: any, res) => {
     try {
-      res.json(bankStatementsMemory);
+      const statements = await storage.getBankStatements();
+      res.json(statements);
     } catch (error) {
       console.error("Error fetching bank statements:", error);
       res.status(500).json({ message: "Failed to fetch bank statements" });

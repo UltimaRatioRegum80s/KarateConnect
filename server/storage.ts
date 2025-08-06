@@ -36,6 +36,10 @@ import {
   type InsertCalendarEvent,
   type CalendarDocument,
   type InsertCalendarDocument,
+  type BankStatement,
+  type InsertBankStatement,
+  type BankTransaction,
+  type InsertBankTransaction,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sql, and, gte, lte } from "drizzle-orm";
@@ -86,6 +90,13 @@ export interface IStorage {
   getCalendarDocuments(): Promise<CalendarDocument[]>;
   createCalendarDocument(data: InsertCalendarDocument): Promise<CalendarDocument>;
   updateCalendarDocument(id: string, data: Partial<InsertCalendarDocument>): Promise<CalendarDocument>;
+
+  // Bank statement operations
+  getBankStatements(): Promise<BankStatement[]>;
+  getBankStatement(id: string): Promise<BankStatement | undefined>;
+  createBankStatement(data: InsertBankStatement): Promise<BankStatement>;
+  updateBankStatement(id: string, data: Partial<InsertBankStatement>): Promise<BankStatement>;
+  deleteBankStatement(id: string): Promise<void>;
 
   // Statistics
   getRoomStats(roomId: string): Promise<{ memberCount: number; messageCount: number }>;
@@ -379,6 +390,43 @@ export class DatabaseStorage implements IStorage {
 
   async deleteFinancialEntry(id: string): Promise<void> {
     await db.delete(financialEntries).where(eq(financialEntries.id, id));
+  }
+
+  // Bank statement operations
+  async getBankStatements(): Promise<BankStatement[]> {
+    return await db
+      .select()
+      .from(bankStatements)
+      .orderBy(desc(bankStatements.createdAt));
+  }
+
+  async getBankStatement(id: string): Promise<BankStatement | undefined> {
+    const [statement] = await db
+      .select()
+      .from(bankStatements)
+      .where(eq(bankStatements.id, id));
+    return statement;
+  }
+
+  async createBankStatement(data: InsertBankStatement): Promise<BankStatement> {
+    const [statement] = await db
+      .insert(bankStatements)
+      .values(data)
+      .returning();
+    return statement;
+  }
+
+  async updateBankStatement(id: string, data: Partial<InsertBankStatement>): Promise<BankStatement> {
+    const [statement] = await db
+      .update(bankStatements)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(bankStatements.id, id))
+      .returning();
+    return statement;
+  }
+
+  async deleteBankStatement(id: string): Promise<void> {
+    await db.delete(bankStatements).where(eq(bankStatements.id, id));
   }
 
   // Calendar operations

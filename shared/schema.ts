@@ -107,7 +107,10 @@ export const bankStatements = pgTable("bank_statements", {
   netAmount: varchar("net_amount"), // stored as string for precision
   transactionCount: integer("transaction_count").default(0),
   isProcessed: boolean("is_processed").default(false),
+  status: varchar("status").default("processing"), // "processing", "processed", "failed"
   processingNotes: text("processing_notes"),
+  analysis: jsonb("analysis"), // Store analysis data as JSON
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -266,6 +269,24 @@ export const insertCalendarDocumentSchema = createInsertSchema(calendarDocuments
   uploadedAt: true,
   processedAt: true,
 });
+
+export const insertBankStatementSchema = createInsertSchema(bankStatements).omit({
+  id: true,
+  uploadedAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBankTransactionSchema = createInsertSchema(bankTransactions).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types for exports
+export type BankStatement = typeof bankStatements.$inferSelect;
+export type InsertBankStatement = z.infer<typeof insertBankStatementSchema>;
+export type BankTransaction = typeof bankTransactions.$inferSelect;
+export type InsertBankTransaction = z.infer<typeof insertBankTransactionSchema>;
 
 // Login schema
 export const loginSchema = z.object({
