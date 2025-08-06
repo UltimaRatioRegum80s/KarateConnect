@@ -2,8 +2,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/contexts/AdminContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Link, useLocation } from "wouter";
-import { Home, Settings } from "lucide-react";
+import { Home, Settings, ChevronDown, BarChart3, Database, Users } from "lucide-react";
 import type { User } from "@shared/schema";
 
 export default function Header() {
@@ -32,8 +39,35 @@ export default function Header() {
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo, Title, and Navigation */}
+          {/* Logo and Home Button */}
           <div className="flex items-center space-x-4">
+            {/* Home Button - Always visible with glow effect on dashboard */}
+            <Link href="/">
+              <Button
+                variant={location === "/" ? "default" : "outline"}
+                size="sm"
+                className={`relative flex items-center transition-all duration-300 ${
+                  location === "/" 
+                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200" 
+                    : "hover:bg-blue-50 border-blue-200"
+                }`}
+                data-testid="button-home"
+                title={location === "/" ? "Scroll to top" : "Go to Dashboard"}
+                onClick={() => {
+                  if (location === "/") {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
+              >
+                <Home className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Dashboard</span>
+                <span className="sm:hidden">Home</span>
+                {location === "/" && (
+                  <div className="absolute inset-0 rounded-md bg-blue-600 opacity-20 animate-pulse"></div>
+                )}
+              </Button>
+            </Link>
+            
             <div className="flex-shrink-0">
               <i className="fas fa-hand-fist text-blue-600 text-2xl"></i>
             </div>
@@ -42,27 +76,12 @@ export default function Header() {
               <div className="flex items-center space-x-2">
                 <p className="text-sm text-gray-600">Executive Committee Dashboard</p>
                 {isAdminMode && (
-                  <Badge variant="destructive" className="text-xs">
+                  <Badge variant="destructive" className="text-xs animate-pulse">
                     ADMIN MODE
                   </Badge>
                 )}
               </div>
             </div>
-            
-            {/* Home Button - show on all pages except dashboard */}
-            {location !== "/" && (
-              <Link href="/">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="ml-4 flex items-center"
-                  data-testid="button-home"
-                >
-                  <Home className="h-4 w-4 mr-2" />
-                  Home
-                </Button>
-              </Link>
-            )}
           </div>
 
           {/* User Info and Actions */}
@@ -76,17 +95,53 @@ export default function Header() {
               </div>
             </div>
             
-            {/* Admin Mode Toggle */}
-            <Button
-              variant={isAdminMode ? "destructive" : "outline"}
-              size="sm"
-              onClick={toggleAdminMode}
-              className="flex items-center"
-              data-testid="button-admin-toggle"
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              {isAdminMode ? "Exit Admin" : "Admin Mode"}
-            </Button>
+            {/* Admin Mode Toggle with Dropdown */}
+            {isAdminMode ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="flex items-center animate-pulse"
+                    data-testid="button-admin-dropdown"
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Admin Mode
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => window.location.href = "/"}>
+                    <Home className="h-4 w-4 mr-2" />
+                    Return to Home
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => window.location.href = "/financial-overview"}>
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    Federation Stats
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => window.location.href = "/bank-statements"}>
+                    <Database className="h-4 w-4 mr-2" />
+                    Bank Statements
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={toggleAdminMode}>
+                    <Settings className="h-4 w-4 mr-2" />
+                    Exit Admin Mode
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleAdminMode}
+                className="flex items-center"
+                data-testid="button-admin-toggle"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Admin Mode
+              </Button>
+            )}
             
             {/* Install App Button */}
             <Button
