@@ -10,6 +10,7 @@ interface ChatRoomCardProps {
     isActive: boolean;
     memberCount: number;
     messageCount: number;
+    unreadCount?: number;
   };
 }
 
@@ -28,8 +29,16 @@ export default function ChatRoomCard({ room }: ChatRoomCardProps) {
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
+            <div className="p-2 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors relative">
               <i className="fas fa-comments text-blue-600 text-xl"></i>
+              {(room.unreadCount ?? 0) > 0 && (
+                <Badge 
+                  className="absolute -top-2 -right-2 h-6 w-6 p-0 flex items-center justify-center bg-red-500 text-white text-xs rounded-full"
+                  data-testid={`badge-unread-${room.id}`}
+                >
+                  {room.unreadCount! > 99 ? '99+' : room.unreadCount}
+                </Badge>
+              )}
             </div>
             <div>
               {room.isActive && (
@@ -53,8 +62,15 @@ export default function ChatRoomCard({ room }: ChatRoomCardProps) {
             <i className="fas fa-users"></i>
             <span>{room.memberCount} members</span>
           </div>
-          <div className={room.messageCount > 0 ? "text-blue-600 font-medium" : "text-gray-600"}>
-            {room.messageCount > 0 ? `${room.messageCount} messages` : "No new messages"}
+          <div className="flex items-center space-x-2">
+            <div className={room.messageCount > 0 ? "text-blue-600 font-medium" : "text-gray-600"}>
+              {room.messageCount > 0 ? `${room.messageCount} messages` : "No messages"}
+            </div>
+            {(room.unreadCount ?? 0) > 0 && (
+              <div className="text-red-600 font-medium text-sm">
+                ({room.unreadCount} unread)
+              </div>
+            )}
           </div>
         </div>
       </CardContent>

@@ -37,7 +37,7 @@ export default function Dashboard() {
   const { data: chatRooms, isLoading: roomsLoading } = useQuery({
     queryKey: ["/api/chat-rooms"],
     enabled: isAuthenticated,
-  }) as { data: (ChatRoom & { memberCount: number; messageCount: number })[] | undefined; isLoading: boolean };
+  }) as { data: (ChatRoom & { memberCount: number; messageCount: number; unreadCount: number })[] | undefined; isLoading: boolean };
 
   const initializeRooms = async () => {
     try {

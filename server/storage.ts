@@ -3,6 +3,7 @@ import {
   chatRooms,
   messages,
   roomMembers,
+  userRoomReadStatus,
   polls,
   pollOptions,
   pollVotes,
@@ -100,6 +101,8 @@ export interface IStorage {
 
   // Statistics
   getRoomStats(roomId: string): Promise<{ memberCount: number; messageCount: number }>;
+  getUnreadMessageCount(roomId: string, userId: string): Promise<number>;
+  markRoomAsRead(roomId: string, userId: string, messageId?: string): Promise<void>;
   getUserStats(userId: string): Promise<{ roomCount: number; messageCount: number }>;
 }
 
@@ -525,6 +528,73 @@ export class DatabaseStorage implements IStorage {
       roomCount: roomCountResult?.count || 0,
       messageCount: messageCountResult?.count || 0,
     };
+  }
+
+  async getUnreadMessageCount(roomId: string, userId: string): Promise<number> {
+    // Get the last read message timestamp for this user in this room
+    const [readStatus] = await db
+      .select()
+      .from(userRoomReadStatus)
+      .where(and(
+        eq(userRoomReadStatus.roomId, roomId),
+        eq(userRoomReadStatus.userId, userId)
+      ));
+
+    if (!readStatus) {
+      // If no read status exists, all messages are unread
+      const [messageCount] = await db
+        .select({ count: count() })
+        .from(messages)
+        .where(eq(messages.roomId, roomId));
+      return messageCount?.count || 0;
+    }
+
+    // Count messages after the last read timestamp
+    const [unreadCount] = await db
+      .select({ count: count() })
+      .from(messages)
+      .where(and(
+        eq(messages.roomId, roomId),
+        sql`${messages.createdAt} > ${readStatus.lastReadAt}`
+      ));
+
+    return unreadCount?.count || 0;
+  }
+
+  async markRoomAsRead(roomId: string, userId: string, messageId?: string): Promise<void> {
+    const now = new Date();
+    
+    // Check if read status record exists
+    const [existingStatus] = await db
+      .select()
+      .from(userRoomReadStatus)
+      .where(and(
+        eq(userRoomReadStatus.roomId, roomId),
+        eq(userRoomReadStatus.userId, userId)
+      ));
+
+    if (existingStatus) {
+      // Update existing record
+      await db
+        .update(userRoomReadStatus)
+        .set({ 
+          lastReadAt: now,
+          lastReadMessageId: messageId || existingStatus.lastReadMessageId,
+          updatedAt: now
+        })
+        .where(eq(userRoomReadStatus.id, existingStatus.id));
+    } else {
+      // Create new record
+      await db
+        .insert(userRoomReadStatus)
+        .values({
+          userId,
+          roomId,
+          lastReadMessageId: messageId,
+          lastReadAt: now,
+          updatedAt: now
+        });
+    }
   }
 }
 

@@ -8,6 +8,7 @@ import {
   text,
   integer,
   boolean,
+  unique,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -58,6 +59,18 @@ export const messages = pgTable("messages", {
   duration: integer("duration"), // for voice notes in seconds
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+// Table to track last read message per user per room
+export const userRoomReadStatus = pgTable("user_room_read_status", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  roomId: varchar("room_id").notNull().references(() => chatRooms.id, { onDelete: "cascade" }),
+  lastReadMessageId: varchar("last_read_message_id").references(() => messages.id, { onDelete: "set null" }),
+  lastReadAt: timestamp("last_read_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  userRoomUnique: unique("user_room_unique").on(table.userId, table.roomId),
+}));
 
 export const polls = pgTable("polls", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -180,6 +193,21 @@ export const messagesRelations = relations(messages, ({ one }) => ({
   user: one(users, {
     fields: [messages.userId],
     references: [users.id],
+  }),
+}));
+
+export const userRoomReadStatusRelations = relations(userRoomReadStatus, ({ one }) => ({
+  user: one(users, {
+    fields: [userRoomReadStatus.userId],
+    references: [users.id],
+  }),
+  room: one(chatRooms, {
+    fields: [userRoomReadStatus.roomId],
+    references: [chatRooms.id],
+  }),
+  lastReadMessage: one(messages, {
+    fields: [userRoomReadStatus.lastReadMessageId],
+    references: [messages.id],
   }),
 }));
 

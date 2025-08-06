@@ -370,15 +370,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/chat-rooms', isAuthenticated, async (req, res) => {
     try {
       const rooms = await storage.getChatRooms();
+      const userId = (req.session as any)?.userId;
       
-      // Get stats for each room
+      // Get stats for each room including unread count
       const roomsWithStats = await Promise.all(
         rooms.map(async (room) => {
           const stats = await storage.getRoomStats(room.id);
+          const unreadCount = userId ? await storage.getUnreadMessageCount(room.id, userId) : 0;
           return {
             ...room,
             memberCount: stats.memberCount,
             messageCount: stats.messageCount,
+            unreadCount,
           };
         })
       );
@@ -421,7 +424,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/chat-rooms/:roomId/messages', isAuthenticated, async (req, res) => {
     try {
       const { roomId } = req.params;
+      const userId = (req.session as any)?.userId;
       const messages = await storage.getMessages(roomId);
+      
+      // Mark room as read when user fetches messages
+      if (userId && messages.length > 0) {
+        const latestMessage = messages[0]; // messages are ordered by desc(createdAt)
+        await storage.markRoomAsRead(roomId, userId, latestMessage.id);
+      }
+      
       res.json(messages.reverse()); // Reverse to show oldest first
     } catch (error) {
       console.error("Error fetching messages:", error);
