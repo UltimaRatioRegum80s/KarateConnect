@@ -13,7 +13,10 @@ export function useAuth() {
         }
         return response.json();
       } catch (error) {
-        console.warn("Auth check failed:", error);
+        // Silent fail for auth checks in production
+        if (process.env.NODE_ENV === 'development') {
+          console.warn("Auth check failed:", error);
+        }
         return null; // Handle network errors gracefully
       }
     },

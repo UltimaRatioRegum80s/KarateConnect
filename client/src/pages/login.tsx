@@ -74,7 +74,15 @@ export default function Login() {
         });
       }
     } catch (error) {
-      console.error("Initialization failed:", error);
+      // Silent fail for initialization in production
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Initialization failed:", error);
+      }
+      toast({
+        title: "Initialization Error",
+        description: "Could not initialize system. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 

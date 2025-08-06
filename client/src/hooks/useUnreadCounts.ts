@@ -30,7 +30,10 @@ export function useUnreadCounts() {
           queryClient.invalidateQueries({ queryKey: ["/api/chat-rooms"] });
         }
       } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+        // Silent fail for WebSocket message parsing in production
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error parsing WebSocket message:', error);
+        }
       }
     };
 

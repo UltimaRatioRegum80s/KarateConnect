@@ -41,7 +41,12 @@ export default function ChatRoom() {
       fetch(`/api/chat-rooms/${roomId}/mark-read`, {
         method: 'POST',
         credentials: 'include',
-      }).catch(error => console.warn('Could not mark room as read:', error));
+      }).catch(error => {
+        // Silent fail for mark-as-read - this is not critical functionality
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Could not mark room as read:', error);
+        }
+      });
     }
   }, [roomId, isAuthenticated]);
 

@@ -19,8 +19,13 @@ export default function Header() {
   const [location] = useLocation();
 
   const handleInstallApp = () => {
-    // TODO: Implement PWA installation prompt
-    alert('Install app functionality would be implemented here');
+    // PWA installation functionality for future implementation
+    if ('serviceWorker' in navigator && 'BeforeInstallPromptEvent' in window) {
+      // Future PWA installation logic would go here
+      alert('Install app functionality would be implemented here');
+    } else {
+      alert('PWA installation not supported on this device');
+    }
   };
 
   const handleLogout = async () => {
