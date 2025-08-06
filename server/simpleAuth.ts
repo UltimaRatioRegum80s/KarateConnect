@@ -9,19 +9,68 @@ export interface TestUser {
   position: string;
 }
 
-// Test user accounts for development
+// NKF EXCO Members (2022-2026 term) for development
 export const testUsers: TestUser[] = [
-  // Standard test account for peers
+  // NKF Executive Committee Members
   {
     id: '1001',
-    name: 'Test User',
-    pin: '1234',
+    name: 'Darius Mostert',
+    pin: 'DM2024',
     role: 'member',
-    position: 'Test Member'
+    position: 'Executive Member'
+  },
+  {
+    id: '1003',
+    name: 'Marchelle de Jager',
+    pin: 'MJ2024',
+    role: 'member',
+    position: 'Executive Member'
+  },
+  {
+    id: '1004',
+    name: 'Heinrich Hellmann',
+    pin: 'HH2024',
+    role: 'member',
+    position: 'Executive Member'
+  },
+  {
+    id: '1005',
+    name: 'Sam Ekandjo',
+    pin: 'SE2024',
+    role: 'member',
+    position: 'Executive Member'
+  },
+  {
+    id: '1006',
+    name: 'Damian Kapinga',
+    pin: 'DK2024',
+    role: 'member',
+    position: 'Executive Member'
+  },
+  {
+    id: '1007',
+    name: 'Bonnie Kabasu',
+    pin: 'BK2024',
+    role: 'member',
+    position: 'Executive Member'
+  },
+  {
+    id: '1008',
+    name: 'Theresa Swart',
+    pin: 'TS2024',
+    role: 'member',
+    position: 'Executive Member'
+  },
+  {
+    id: '1009',
+    name: 'Nico Maritz',
+    pin: 'NM2024',
+    role: 'member',
+    position: 'Executive Member'
   },
   // Secret admin account
   {
-    id: 'admin-001',
+    id: '1002',
     name: 'System Admin',
     pin: 'NKF2025#Admin',
     role: 'admin',

@@ -695,13 +695,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize default chat rooms and users
   app.post('/api/initialize', async (req, res) => {
     try {
-      // Create default users
+      // Create NKF EXCO Members (2022-2026 term)
       const defaultUsers = [
-        { name: "Admin President", pin: "1234", role: "president", title: "President" },
-        { name: "Vice President", pin: "5678", role: "admin", title: "Vice President" },
-        { name: "Secretary", pin: "9012", role: "admin", title: "Secretary" },
-        { name: "Treasurer", pin: "3456", role: "admin", title: "Treasurer" },
-        { name: "Technical Director", pin: "7890", role: "admin", title: "Technical Director" },
+        { name: "Darius Mostert", pin: "DM2024", role: "member", title: "Executive Member" },
+        { name: "Marchelle de Jager", pin: "MJ2024", role: "member", title: "Executive Member" },
+        { name: "Heinrich Hellmann", pin: "HH2024", role: "member", title: "Executive Member" },
+        { name: "Sam Ekandjo", pin: "SE2024", role: "member", title: "Executive Member" },
+        { name: "Damian Kapinga", pin: "DK2024", role: "member", title: "Executive Member" },
+        { name: "Bonnie Kabasu", pin: "BK2024", role: "member", title: "Executive Member" },
+        { name: "Theresa Swart", pin: "TS2024", role: "member", title: "Executive Member" },
+        { name: "Nico Maritz", pin: "NM2024", role: "member", title: "Executive Member" },
+        { name: "System Admin", pin: "NKF2025#Admin", role: "admin", title: "System Administrator" },
       ];
 
       for (const userData of defaultUsers) {
