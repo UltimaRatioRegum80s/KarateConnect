@@ -102,6 +102,9 @@ The application is designed for deployment on Replit with the following setup:
 - ✅ **RESOLVED: Fixed Replit preview console iframe loading issues (January 31, 2025)**
 - ✅ **Added iframe compatibility headers and Content-Security-Policy for Replit domains**
 - ✅ **Preview console now working - React app loads successfully in development environment**
+- ✅ **RESOLVED: Critical bank statement persistence issue - converted from memory to database storage (August 6, 2025)**
+- ✅ **Added admin mode toggle with password protection for manual edits (August 6, 2025)**
+- ✅ **Added home navigation button visible on all pages (August 6, 2025)**
 - ✅ Ready for deployment at custom subdomain (exco-portal.replit.app requested)
 
 The architecture prioritizes governance functionality, financial transparency, and secure communication while maintaining real-time collaboration capabilities for executive decision-making.

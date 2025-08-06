@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useAdmin } from "@/contexts/AdminContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -73,6 +74,7 @@ type EntryFormData = z.infer<typeof entrySchema>;
 
 export default function FinancialOverview() {
   const { toast } = useToast();
+  const { isAdminMode } = useAdmin();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const currentYear = new Date().getFullYear().toString();
 
@@ -243,12 +245,20 @@ export default function FinancialOverview() {
           )}
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Add Entry
-            </Button>
-          </DialogTrigger>
+          {isAdminMode && (
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-entry">
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Add Entry
+              </Button>
+            </DialogTrigger>
+          )}
+          {!isAdminMode && (
+            <div className="text-sm text-gray-500 flex items-center">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              Enable admin mode to add entries
+            </div>
+          )}
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add Financial Entry</DialogTitle>

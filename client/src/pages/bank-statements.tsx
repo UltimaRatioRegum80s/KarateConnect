@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/contexts/AdminContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -58,6 +59,7 @@ interface AnalysisResult {
 export default function BankStatements() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isAdminMode } = useAdmin();
   const { isAuthenticated, isLoading, user } = useAuth() as { 
     isAuthenticated: boolean; 
     isLoading: boolean; 
@@ -312,13 +314,21 @@ export default function BankStatements() {
                           <p className="text-sm text-blue-700">{formatFileSize(uploadFile.size)}</p>
                         </div>
                       </div>
-                      <Button
-                        onClick={handleFileUpload}
-                        disabled={uploadMutation.isPending}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        {uploadMutation.isPending ? "Uploading..." : "Upload"}
-                      </Button>
+                      {(isAdmin || isAdminMode) ? (
+                        <Button
+                          onClick={handleFileUpload}
+                          disabled={uploadMutation.isPending}
+                          className="bg-blue-600 hover:bg-blue-700"
+                          data-testid="button-upload-statement"
+                        >
+                          {uploadMutation.isPending ? "Uploading..." : "Upload"}
+                        </Button>
+                      ) : (
+                        <div className="text-sm text-gray-500 flex items-center">
+                          <AlertCircle className="h-4 w-4 mr-2" />
+                          Admin access required for uploads
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -366,18 +376,20 @@ export default function BankStatements() {
                                 <><AlertCircle className="h-3 w-3 mr-1" /> Pending</>
                               )}
                             </Badge>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                console.log('Delete button clicked for statement:', statement.id);
-                                deleteMutation.mutate(statement.id);
-                              }}
-                              disabled={deleteMutation.isPending}
-                              data-testid={`button-delete-${statement.id}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {(isAdmin || isAdminMode) && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  console.log('Delete button clicked for statement:', statement.id);
+                                  deleteMutation.mutate(statement.id);
+                                }}
+                                disabled={deleteMutation.isPending}
+                                data-testid={`button-delete-${statement.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                         
