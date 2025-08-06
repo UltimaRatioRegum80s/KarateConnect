@@ -871,6 +871,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // In-memory storage for bank statements (admin only)
   const bankStatementsMemory: any[] = [];
 
+  // Add sample bank statement data for testing
+  const initializeSampleBankStatements = () => {
+    if (bankStatementsMemory.length === 0) {
+      const sampleStatements = [
+        {
+          id: 'sample-2025-01',
+          fileName: 'sample-statement-january-2025.pdf',
+          originalName: 'NKF_Statement_Jan_2025.pdf',
+          fileSize: 125000,
+          mimeType: 'application/pdf',
+          uploadedBy: 'system',
+          bankName: 'Bank Windhoek',
+          accountNumber: '****1234',
+          statementPeriod: 'January 2025',
+          totalIncome: '42500.00',
+          totalExpenses: '18750.00',
+          netAmount: '23750.00',
+          transactionCount: 67,
+          isProcessed: true,
+          status: 'processed',
+          processingNotes: 'Sample statement with realistic NKF data',
+          createdAt: new Date('2025-01-01').toISOString(),
+          updatedAt: new Date().toISOString(),
+          uploadedAt: new Date('2025-01-01').toISOString(),
+          analysis: {
+            totalIncome: 42500,
+            totalExpenses: 18750,
+            topIncomeCategories: [
+              { category: 'Membership Fees', amount: 17000 },
+              { category: 'Tournament Entry Fees', amount: 12750 },
+              { category: 'Sponsorships', amount: 8500 },
+              { category: 'Training Camps', amount: 4250 }
+            ],
+            topExpenseCategories: [
+              { category: 'Equipment & Supplies', amount: 6562.50 },
+              { category: 'Venue Rentals', amount: 4687.50 },
+              { category: 'Travel & Accommodation', amount: 3750 },
+              { category: 'Administrative Costs', amount: 2812.50 },
+              { category: 'Other Expenses', amount: 937.50 }
+            ]
+          }
+        },
+        {
+          id: 'sample-2024-12',
+          fileName: 'sample-statement-december-2024.pdf',
+          originalName: 'NKF_Statement_Dec_2024.pdf',
+          fileSize: 98000,
+          mimeType: 'application/pdf',
+          uploadedBy: 'system',
+          bankName: 'FNB Namibia',
+          accountNumber: '****5678',
+          statementPeriod: 'December 2024',
+          totalIncome: '38200.00',
+          totalExpenses: '22100.00',
+          netAmount: '16100.00',
+          transactionCount: 54,
+          isProcessed: true,
+          status: 'processed',
+          processingNotes: 'Sample statement with realistic NKF data',
+          createdAt: new Date('2024-12-01').toISOString(),
+          updatedAt: new Date().toISOString(),
+          uploadedAt: new Date('2024-12-01').toISOString(),
+          analysis: {
+            totalIncome: 38200,
+            totalExpenses: 22100,
+            topIncomeCategories: [
+              { category: 'Championship Fees', amount: 15280 },
+              { category: 'Membership Fees', amount: 11460 },
+              { category: 'Corporate Sponsorships', amount: 7640 },
+              { category: 'Equipment Sales', amount: 3820 }
+            ],
+            topExpenseCategories: [
+              { category: 'National Team Costs', amount: 7735 },
+              { category: 'Equipment & Supplies', amount: 5525 },
+              { category: 'Competition Venues', amount: 4420 },
+              { category: 'Officials & Referees', amount: 3315 },
+              { category: 'Administration', amount: 1105 }
+            ]
+          }
+        }
+      ];
+
+      bankStatementsMemory.push(...sampleStatements);
+      console.log(`Initialized ${sampleStatements.length} sample bank statements in memory`);
+    }
+  };
+
+  // Initialize sample data on server start
+  initializeSampleBankStatements();
+
   app.post('/api/bank-statements/upload', isAuthenticated, isAdminUser, upload.single('statement'), async (req: any, res) => {
     try {
       if (!req.file) {
@@ -896,25 +986,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
         netAmount: "0",
         transactionCount: 0,
         isProcessed: false,
+        status: 'processing',
         processingNotes: null,
+        analysis: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        uploadedAt: new Date().toISOString(),
       };
 
       // Store in memory
       bankStatementsMemory.push(statement);
+      
+      console.log(`Bank statement uploaded and stored in memory:`, {
+        id: statement.id,
+        fileName: statement.fileName,
+        bankName: statement.bankName,
+        memoryLength: bankStatementsMemory.length
+      });
 
-      // Simple mock processing - in real app, this would parse the PDF/CSV
+      // Enhanced mock processing with financial data structure
       setTimeout(() => {
         const stmt = bankStatementsMemory.find(s => s.id === statement.id);
         if (stmt) {
-          stmt.totalIncome = (Math.random() * 50000 + 10000).toFixed(2);
-          stmt.totalExpenses = (Math.random() * 30000 + 5000).toFixed(2);
-          stmt.netAmount = (parseFloat(stmt.totalIncome) - parseFloat(stmt.totalExpenses)).toFixed(2);
+          const totalIncome = Math.random() * 50000 + 10000;
+          const totalExpenses = Math.random() * 30000 + 5000;
+          
+          // Create analysis structure required by financial calculations
+          stmt.status = 'processed';
+          stmt.analysis = {
+            totalIncome: totalIncome,
+            totalExpenses: totalExpenses,
+            topIncomeCategories: [
+              { category: 'Membership Fees', amount: totalIncome * 0.4 },
+              { category: 'Tournament Entry Fees', amount: totalIncome * 0.3 },
+              { category: 'Sponsorships', amount: totalIncome * 0.2 },
+              { category: 'Other Income', amount: totalIncome * 0.1 }
+            ],
+            topExpenseCategories: [
+              { category: 'Equipment & Supplies', amount: totalExpenses * 0.35 },
+              { category: 'Venue Rentals', amount: totalExpenses * 0.25 },
+              { category: 'Travel & Accommodation', amount: totalExpenses * 0.20 },
+              { category: 'Administrative Costs', amount: totalExpenses * 0.15 },
+              { category: 'Other Expenses', amount: totalExpenses * 0.05 }
+            ]
+          };
+          
+          // Keep backward compatibility
+          stmt.totalIncome = totalIncome.toFixed(2);
+          stmt.totalExpenses = totalExpenses.toFixed(2);
+          stmt.netAmount = (totalIncome - totalExpenses).toFixed(2);
           stmt.transactionCount = Math.floor(Math.random() * 100) + 20;
           stmt.isProcessed = true;
-          stmt.processingNotes = "Automatically processed statement";
+          stmt.processingNotes = "Automatically processed with financial analysis";
           stmt.updatedAt = new Date().toISOString();
+          stmt.uploadedAt = new Date().toISOString();
+          
+          console.log(`Bank statement ${stmt.id} processed with analysis:`, {
+            totalIncome: stmt.totalIncome,
+            totalExpenses: stmt.totalExpenses,
+            netAmount: stmt.netAmount
+          });
         }
       }, 3000); // Process after 3 seconds
 
