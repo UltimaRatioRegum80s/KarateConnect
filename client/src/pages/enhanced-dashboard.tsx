@@ -7,6 +7,9 @@ import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/layout/header";
 import ChatRoomCard from "@/components/chat/chat-room-card";
 import { DashboardAdminOverlay } from "@/components/admin/dashboard-admin-overlay";
+import { AdminEditOverlay } from "@/components/admin/admin-edit-overlay";
+import { QuickAccessToolbar } from "@/components/admin/quick-access-toolbar";
+import { AdminAnalyticsWidget } from "@/components/admin/admin-analytics-widget";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -141,8 +144,8 @@ export default function EnhancedDashboard() {
       
       <main className="container mx-auto px-6 py-8 space-y-8">
         {/* Welcome Section with Admin Controls */}
-        <div className="relative">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-6 text-white">
+        <AdminEditOverlay editHint="Edit welcome message">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-6 text-white relative">
             <div className="flex justify-between items-start">
               <div>
                 <h1 className="text-2xl font-bold mb-2" data-testid="text-welcome-title">
@@ -168,141 +171,147 @@ export default function EnhancedDashboard() {
               />
             )}
           </div>
-        </div>
+        </AdminEditOverlay>
 
         {/* Main Dashboard Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Financial Overview */}
-          <Card className="relative">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Financial Overview</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">NAD 42,500</div>
-              <p className="text-xs text-muted-foreground">
-                +15.2% from last month
-              </p>
-              <div className="mt-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Income:</span>
-                  <span className="text-green-600">+NAD 18,750</span>
+          <AdminEditOverlay editHint="Edit financial projections">
+            <Card className="relative">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Financial Overview</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">NAD 42,500</div>
+                <p className="text-xs text-muted-foreground">
+                  +15.2% from last month
+                </p>
+                <div className="mt-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Income:</span>
+                    <span className="text-green-600">+NAD 18,750</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Expenses:</span>
+                    <span className="text-red-600">-NAD 12,250</span>
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span>Expenses:</span>
-                  <span className="text-red-600">-NAD 12,250</span>
+                
+                <div className="mt-4 flex space-x-2">
+                  <Link href="/financial">
+                    <Button size="sm" variant="outline" className="flex-1">
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      View Charts
+                    </Button>
+                  </Link>
                 </div>
-              </div>
+              </CardContent>
               
-              <div className="mt-4 flex space-x-2">
-                <Link href="/financial">
-                  <Button size="sm" variant="outline" className="flex-1">
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    View Charts
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-            
-            {isAdminMode && (
-              <DashboardAdminOverlay 
-                cardType="financial" 
-                cardTitle="Financial Overview"
-              />
-            )}
-          </Card>
+              {isAdminMode && (
+                <DashboardAdminOverlay 
+                  cardType="financial" 
+                  cardTitle="Financial Overview"
+                />
+              )}
+            </Card>
+          </AdminEditOverlay>
 
           {/* NKF Calendar */}
-          <Card className="relative">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">NKF Calendar</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">12 Events</div>
-              <p className="text-xs text-muted-foreground">
-                This month • 3 upcoming
-              </p>
-              <div className="mt-4 space-y-2">
-                <div className="flex items-center text-sm">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-                  <span>EXCO Meeting - Tomorrow</span>
+          <AdminEditOverlay editHint="Manage calendar events">
+            <Card className="relative">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">NKF Calendar</CardTitle>
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">12 Events</div>
+                <p className="text-xs text-muted-foreground">
+                  This month • 3 upcoming
+                </p>
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center text-sm">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                    <span>EXCO Meeting - Tomorrow</span>
+                  </div>
+                  <div className="flex items-center text-sm">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                    <span>Training Camp - Aug 15</span>
+                  </div>
+                  <div className="flex items-center text-sm">
+                    <div className="w-2 h-2 bg-orange-500 rounded-full mr-2"></div>
+                    <span>Competition - Aug 20</span>
+                  </div>
                 </div>
-                <div className="flex items-center text-sm">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                  <span>Training Camp - Aug 15</span>
+                
+                <div className="mt-4">
+                  <Link href="/calendar">
+                    <Button size="sm" variant="outline" className="w-full">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Open Calendar
+                    </Button>
+                  </Link>
                 </div>
-                <div className="flex items-center text-sm">
-                  <div className="w-2 h-2 bg-orange-500 rounded-full mr-2"></div>
-                  <span>Competition - Aug 20</span>
-                </div>
-              </div>
+              </CardContent>
               
-              <div className="mt-4">
-                <Link href="/calendar">
-                  <Button size="sm" variant="outline" className="w-full">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Open Calendar
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-            
-            {isAdminMode && (
-              <DashboardAdminOverlay 
-                cardType="calendar" 
-                cardTitle="NKF Calendar"
-              />
-            )}
-          </Card>
+              {isAdminMode && (
+                <DashboardAdminOverlay 
+                  cardType="calendar" 
+                  cardTitle="NKF Calendar"
+                />
+              )}
+            </Card>
+          </AdminEditOverlay>
 
           {/* Bank Statements */}
-          <Card className="relative">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Bank Statements</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">3 Statements</div>
-              <p className="text-xs text-muted-foreground">
-                Last processed: 2 days ago
-              </p>
-              <div className="mt-4 space-y-2">
-                <div className="flex justify-between items-center text-sm">
-                  <span>January 2025</span>
-                  <Badge variant="secondary" className="text-xs">Processed</Badge>
+          <AdminEditOverlay editHint="Upload & analyze statements">
+            <Card className="relative">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Bank Statements</CardTitle>
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">3 Statements</div>
+                <p className="text-xs text-muted-foreground">
+                  Last processed: 2 days ago
+                </p>
+                <div className="mt-4 space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span>January 2025</span>
+                    <Badge variant="secondary" className="text-xs">Processed</Badge>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span>December 2024</span>
+                    <Badge variant="secondary" className="text-xs">Processed</Badge>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span>November 2024</span>
+                    <Badge variant="outline" className="text-xs">Pending</Badge>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span>December 2024</span>
-                  <Badge variant="secondary" className="text-xs">Processed</Badge>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span>November 2024</span>
-                  <Badge variant="outline" className="text-xs">Pending</Badge>
-                </div>
-              </div>
+                
+                {user?.role === 'admin' && (
+                  <div className="mt-4 flex space-x-2">
+                    <Button size="sm" variant="outline" className="flex-1">
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload
+                    </Button>
+                    <Button size="sm" variant="outline" className="flex-1">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Analyze
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
               
-              {user?.role === 'admin' && (
-                <div className="mt-4 flex space-x-2">
-                  <Button size="sm" variant="outline" className="flex-1">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload
-                  </Button>
-                  <Button size="sm" variant="outline" className="flex-1">
-                    <FileText className="h-4 w-4 mr-2" />
-                    Analyze
-                  </Button>
-                </div>
+              {isAdminMode && (
+                <DashboardAdminOverlay 
+                  cardType="bank-statements" 
+                  cardTitle="Bank Statements"
+                />
               )}
-            </CardContent>
-            
-            {isAdminMode && (
-              <DashboardAdminOverlay 
-                cardType="bank-statements" 
-                cardTitle="Bank Statements"
-              />
-            )}
-          </Card>
+            </Card>
+          </AdminEditOverlay>
         </div>
 
         {/* Visual Editor Shortcuts (Admin Mode Only) */}
@@ -460,6 +469,10 @@ export default function EnhancedDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Admin Components */}
+        <QuickAccessToolbar />
+        <AdminAnalyticsWidget />
       </main>
     </div>
   );
