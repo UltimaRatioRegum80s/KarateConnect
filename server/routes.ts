@@ -376,7 +376,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const roomsWithStats = await Promise.all(
         rooms.map(async (room) => {
           const stats = await storage.getRoomStats(room.id);
-          const unreadCount = userId ? await storage.getUnreadMessageCount(room.id, userId) : 0;
+          let unreadCount = 0;
+          
+          try {
+            unreadCount = userId ? await storage.getUnreadMessageCount(room.id, userId) : 0;
+          } catch (error) {
+            // If table doesn't exist yet, default to 0 unread
+            console.warn("Unread count table not ready:", error);
+            unreadCount = 0;
+          }
+          
           return {
             ...room,
             memberCount: stats.memberCount,
@@ -429,8 +438,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Mark room as read when user fetches messages
       if (userId && messages.length > 0) {
-        const latestMessage = messages[0]; // messages are ordered by desc(createdAt)
-        await storage.markRoomAsRead(roomId, userId, latestMessage.id);
+        try {
+          const latestMessage = messages[0]; // messages are ordered by desc(createdAt)
+          await storage.markRoomAsRead(roomId, userId, latestMessage.id);
+        } catch (error) {
+          console.warn("Could not mark room as read:", error);
+        }
       }
       
       res.json(messages.reverse()); // Reverse to show oldest first

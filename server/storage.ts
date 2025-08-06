@@ -531,69 +531,79 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUnreadMessageCount(roomId: string, userId: string): Promise<number> {
-    // Get the last read message timestamp for this user in this room
-    const [readStatus] = await db
-      .select()
-      .from(userRoomReadStatus)
-      .where(and(
-        eq(userRoomReadStatus.roomId, roomId),
-        eq(userRoomReadStatus.userId, userId)
-      ));
+    try {
+      // Get the last read message timestamp for this user in this room
+      const [readStatus] = await db
+        .select()
+        .from(userRoomReadStatus)
+        .where(and(
+          eq(userRoomReadStatus.roomId, roomId),
+          eq(userRoomReadStatus.userId, userId)
+        ));
 
-    if (!readStatus) {
-      // If no read status exists, all messages are unread
-      const [messageCount] = await db
+      if (!readStatus) {
+        // If no read status exists, all messages are unread
+        const [messageCount] = await db
+          .select({ count: count() })
+          .from(messages)
+          .where(eq(messages.roomId, roomId));
+        return messageCount?.count || 0;
+      }
+
+      // Count messages after the last read timestamp
+      const [unreadCount] = await db
         .select({ count: count() })
         .from(messages)
-        .where(eq(messages.roomId, roomId));
-      return messageCount?.count || 0;
+        .where(and(
+          eq(messages.roomId, roomId),
+          sql`${messages.createdAt} > ${readStatus.lastReadAt}`
+        ));
+
+      return unreadCount?.count || 0;
+    } catch (error) {
+      // If table doesn't exist yet, return 0
+      console.warn("Error getting unread count (table may not exist yet):", error);
+      return 0;
     }
-
-    // Count messages after the last read timestamp
-    const [unreadCount] = await db
-      .select({ count: count() })
-      .from(messages)
-      .where(and(
-        eq(messages.roomId, roomId),
-        sql`${messages.createdAt} > ${readStatus.lastReadAt}`
-      ));
-
-    return unreadCount?.count || 0;
   }
 
   async markRoomAsRead(roomId: string, userId: string, messageId?: string): Promise<void> {
-    const now = new Date();
-    
-    // Check if read status record exists
-    const [existingStatus] = await db
-      .select()
-      .from(userRoomReadStatus)
-      .where(and(
-        eq(userRoomReadStatus.roomId, roomId),
-        eq(userRoomReadStatus.userId, userId)
-      ));
+    try {
+      const now = new Date();
+      
+      // Check if read status record exists
+      const [existingStatus] = await db
+        .select()
+        .from(userRoomReadStatus)
+        .where(and(
+          eq(userRoomReadStatus.roomId, roomId),
+          eq(userRoomReadStatus.userId, userId)
+        ));
 
-    if (existingStatus) {
-      // Update existing record
-      await db
-        .update(userRoomReadStatus)
-        .set({ 
-          lastReadAt: now,
-          lastReadMessageId: messageId || existingStatus.lastReadMessageId,
-          updatedAt: now
-        })
-        .where(eq(userRoomReadStatus.id, existingStatus.id));
-    } else {
-      // Create new record
-      await db
-        .insert(userRoomReadStatus)
-        .values({
-          userId,
-          roomId,
-          lastReadMessageId: messageId,
-          lastReadAt: now,
-          updatedAt: now
-        });
+      if (existingStatus) {
+        // Update existing record
+        await db
+          .update(userRoomReadStatus)
+          .set({ 
+            lastReadAt: now,
+            lastReadMessageId: messageId || existingStatus.lastReadMessageId,
+            updatedAt: now
+          })
+          .where(eq(userRoomReadStatus.id, existingStatus.id));
+      } else {
+        // Create new record
+        await db
+          .insert(userRoomReadStatus)
+          .values({
+            userId,
+            roomId,
+            lastReadMessageId: messageId,
+            lastReadAt: now,
+            updatedAt: now
+          });
+      }
+    } catch (error) {
+      console.warn("Error marking room as read (table may not exist yet):", error);
     }
   }
 }
