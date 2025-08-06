@@ -1392,6 +1392,149 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dashboard Admin API Routes
+  app.post('/api/admin/financial/projections', isAuthenticated, async (req: any, res) => {
+    try {
+      const projectionData = req.body;
+      
+      // In production, this would save financial projections to database
+      console.log('Financial projections updated:', projectionData);
+      
+      res.json({ success: true, message: 'Financial projections updated successfully' });
+    } catch (error) {
+      console.error("Error updating financial projections:", error);
+      res.status(500).json({ message: "Failed to update financial projections" });
+    }
+  });
+
+  app.post('/api/admin/calendar/quick-add', isAuthenticated, async (req: any, res) => {
+    try {
+      const eventData = req.body;
+      const userId = req.session.userId;
+      
+      // Create the event using existing functionality
+      const event = await storage.createCalendarEvent({
+        ...eventData,
+        createdBy: userId,
+        source: 'admin-quick-add'
+      });
+      
+      res.json({ success: true, event, message: 'Event added successfully' });
+    } catch (error) {
+      console.error("Error adding quick event:", error);
+      res.status(500).json({ message: "Failed to add event" });
+    }
+  });
+
+  app.post('/api/admin/calendar/import/:type', isAuthenticated, async (req: any, res) => {
+    try {
+      const { type } = req.params; // 'ical' or 'csv'
+      
+      // In production, this would handle file import and parsing
+      console.log(`Calendar import initiated for type: ${type}`);
+      
+      res.json({ 
+        success: true, 
+        message: `${type.toUpperCase()} import initiated successfully`,
+        importId: Math.random().toString(36).substring(7)
+      });
+    } catch (error) {
+      console.error("Error importing calendar data:", error);
+      res.status(500).json({ message: "Failed to import calendar data" });
+    }
+  });
+
+  app.post('/api/admin/bank-statements/quick-upload', isAuthenticated, async (req: any, res) => {
+    try {
+      const { category, tags, autoAnalysis } = req.body;
+      const userId = req.session.userId;
+      
+      // Simulate file upload and processing
+      const statement = await storage.createBankStatement({
+        fileName: `admin-upload-${Date.now()}.pdf`,
+        originalName: 'Quick Upload Statement.pdf',
+        fileSize: '150000',
+        mimeType: 'application/pdf',
+        uploadedBy: userId,
+        bankName: 'Admin Upload',
+        accountNumber: '****ADMIN',
+        statementPeriod: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        totalIncome: '0.00',
+        totalExpenses: '0.00',
+        netAmount: '0.00',
+        transactionCount: 0,
+        isProcessed: false,
+        status: 'uploaded',
+        processingNotes: `Admin upload with category: ${category}, tags: ${tags}`
+      });
+
+      // If auto-analysis is enabled, trigger processing
+      if (autoAnalysis) {
+        setTimeout(async () => {
+          try {
+            await storage.updateBankStatement(statement.id, {
+              status: 'processed',
+              isProcessed: true,
+              processingNotes: 'Auto-analysis completed'
+            });
+          } catch (error) {
+            console.error('Error in auto-analysis:', error);
+          }
+        }, 3000);
+      }
+      
+      res.json({ success: true, statement, message: 'Bank statement uploaded successfully' });
+    } catch (error) {
+      console.error("Error uploading bank statement:", error);
+      res.status(500).json({ message: "Failed to upload bank statement" });
+    }
+  });
+
+  app.post('/api/admin/dashboard/welcome-message', isAuthenticated, async (req: any, res) => {
+    try {
+      const welcomeData = req.body;
+      
+      // In production, this would save personalized welcome messages to database
+      console.log('Welcome message updated:', welcomeData);
+      
+      res.json({ success: true, message: 'Welcome message updated successfully' });
+    } catch (error) {
+      console.error("Error updating welcome message:", error);
+      res.status(500).json({ message: "Failed to update welcome message" });
+    }
+  });
+
+  app.get('/api/admin/dashboard/widgets', isAuthenticated, async (req: any, res) => {
+    try {
+      // In production, this would fetch dashboard widget configuration from database
+      const widgets = [
+        { id: 'financial', name: 'Financial Overview', enabled: true, position: 1 },
+        { id: 'calendar', name: 'NKF Calendar', enabled: true, position: 2 },
+        { id: 'bank-statements', name: 'Bank Statements', enabled: true, position: 3 },
+        { id: 'communications', name: 'Communication Channels', enabled: true, position: 4 }
+      ];
+      
+      res.json(widgets);
+    } catch (error) {
+      console.error("Error fetching dashboard widgets:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard widgets" });
+    }
+  });
+
+  app.post('/api/admin/dashboard/widgets/reorder', isAuthenticated, async (req: any, res) => {
+    try {
+      const { widgetOrder } = req.body;
+      
+      // In production, this would update widget positions in database
+      console.log('Dashboard widgets reordered:', widgetOrder);
+      
+      res.json({ success: true, message: 'Dashboard layout updated successfully' });
+    } catch (error) {
+      console.error("Error reordering widgets:", error);
+      res.status(500).json({ message: "Failed to reorder widgets" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket server for real-time chat

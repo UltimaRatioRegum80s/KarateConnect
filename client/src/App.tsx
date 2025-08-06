@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
+import EnhancedDashboard from "@/pages/enhanced-dashboard";
 import ChatRoom from "@/pages/chat-room";
 import FinancialOverview from "@/pages/financial-overview";
 import BankStatements from "@/pages/bank-statements";
@@ -34,7 +35,8 @@ function Router() {
         <Route path="/" component={Login} />
       ) : (
         <>
-          <Route path="/" component={Dashboard} />
+          <Route path="/" component={EnhancedDashboard} />
+          <Route path="/old-dashboard" component={Dashboard} />
           <Route path="/chat/:roomId" component={ChatRoom} />
           <Route path="/financial" component={FinancialOverview} />
           <Route path="/bank-statements" component={BankStatements} />
