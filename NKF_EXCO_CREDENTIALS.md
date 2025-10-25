@@ -16,10 +16,11 @@ The following NKF EXCO members have been integrated as user accounts in the syst
 | Theresa Swart | Theresa Swart | TS2024 | Executive Member |
 | Nico Maritz | Nico Maritz | NM2024 | Executive Member |
 
-### System Administration
+### President & Chief Administrator
 | Name | Username | PIN | Position |
 |------|----------|-----|----------|
-| System Admin | System Admin | NKF2025#Admin | System Administrator |
+| De Wet Moolman | De Wet Moolman | NKF2025#Admin | President & Chief Administrator |
+| System Admin | System Admin | NKF2025#Admin | System Administrator (Alias) |
 
 ## Features Available
 - **Multi-Channel Communication**: Topic-based chat rooms with unread message badges
@@ -35,11 +36,14 @@ The following NKF EXCO members have been integrated as user accounts in the syst
 4. Click "Sign In"
 
 ## Admin Access
-The System Admin account has additional privileges:
+De Wet Moolman (President & Chief Administrator) has full administrative privileges:
 - Access to bank statement uploads and analysis
 - Financial data management
 - User management capabilities
 - System configuration
+- All EXCO governance and oversight functions
+
+Note: "System Admin" username also works as an alias for backward compatibility.
 
 Admin Mode Password: `NKFAdmin2025`
 
