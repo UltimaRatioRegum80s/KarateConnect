@@ -68,9 +68,17 @@ export const testUsers: TestUser[] = [
     role: 'member',
     position: 'Executive Member'
   },
-  // Secret admin account
+  // President and Chief Administrator
   {
     id: '1002',
+    name: 'De Wet Moolman',
+    pin: 'NKF2025#Admin',
+    role: 'admin',
+    position: 'President & Chief Administrator'
+  },
+  // System Admin alias (for backward compatibility)
+  {
+    id: '1010',
     name: 'System Admin',
     pin: 'NKF2025#Admin',
     role: 'admin',
