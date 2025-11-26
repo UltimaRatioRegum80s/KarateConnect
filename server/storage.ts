@@ -89,6 +89,7 @@ export interface IStorage {
   deleteCalendarEvent(id: string): Promise<void>;
   
   getCalendarDocuments(): Promise<CalendarDocument[]>;
+  getCalendarDocument(id: string): Promise<CalendarDocument | undefined>;
   createCalendarDocument(data: InsertCalendarDocument): Promise<CalendarDocument>;
   updateCalendarDocument(id: string, data: Partial<InsertCalendarDocument>): Promise<CalendarDocument>;
 
@@ -487,6 +488,11 @@ export class DatabaseStorage implements IStorage {
 
   async getCalendarDocuments(): Promise<CalendarDocument[]> {
     return await db.select().from(calendarDocuments).orderBy(desc(calendarDocuments.uploadedAt));
+  }
+
+  async getCalendarDocument(id: string): Promise<CalendarDocument | undefined> {
+    const [document] = await db.select().from(calendarDocuments).where(eq(calendarDocuments.id, id));
+    return document;
   }
 
   async createCalendarDocument(data: InsertCalendarDocument): Promise<CalendarDocument> {

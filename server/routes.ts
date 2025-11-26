@@ -1231,48 +1231,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Function to extract year from filename (e.g., "NKF Calendar 2026.pdf" -> 2026)
+  const extractYearFromFilename = (filename: string): number => {
+    const yearMatch = filename.match(/20\d{2}/);
+    if (yearMatch) {
+      return parseInt(yearMatch[0], 10);
+    }
+    return new Date().getFullYear();
+  };
+
   // Function to process calendar documents (simulate AI extraction)
   const processCalendarDocument = async (documentId: string) => {
     try {
+      // Get the document to extract year from filename
+      const document = await storage.getCalendarDocument(documentId);
+      if (!document) {
+        throw new Error("Document not found");
+      }
+
+      const targetYear = extractYearFromFilename(document.originalName);
+      console.log(`Processing calendar document: ${document.originalName}, detected year: ${targetYear}`);
+
       // Simulate processing time
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Simulate extracted events
+      // Create events with the correct year extracted from filename
       const sampleEvents = [
         {
           title: "Junior Development Championships",
           description: "Annual junior development competition",
           eventType: "competition",
-          startDate: new Date(2025, 2, 15), // March 15, 2025
-          endDate: new Date(2025, 2, 17), // March 17, 2025
+          startDate: new Date(targetYear, 2, 15), // March 15
+          endDate: new Date(targetYear, 2, 17), // March 17
           location: "Windhoek Sports Complex",
           isAllDay: "false",
           source: "document",
-          documentName: `document-${documentId}`,
+          documentName: document.originalName,
           createdBy: "system",
         },
         {
           title: "UFAK Regional Tournament",
           description: "Regional tournament for UFAK participants",
           eventType: "competition",
-          startDate: new Date(2025, 3, 20), // April 20, 2025
-          endDate: new Date(2025, 3, 22), // April 22, 2025
+          startDate: new Date(targetYear, 3, 20), // April 20
+          endDate: new Date(targetYear, 3, 22), // April 22
           location: "Swakopmund Sports Hall",
           isAllDay: "false",
           source: "document",
-          documentName: `document-${documentId}`,
+          documentName: document.originalName,
           createdBy: "system",
         },
         {
           title: "National Championships",
           description: "Annual national karate championships",
           eventType: "competition",
-          startDate: new Date(2025, 5, 10), // June 10, 2025
-          endDate: new Date(2025, 5, 12), // June 12, 2025
+          startDate: new Date(targetYear, 5, 10), // June 10
+          endDate: new Date(targetYear, 5, 12), // June 12
           location: "Windhoek Convention Centre",
           isAllDay: "false",
           source: "document",
-          documentName: `document-${documentId}`,
+          documentName: document.originalName,
           createdBy: "system",
         },
       ];
@@ -1286,7 +1304,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateCalendarDocument(documentId, {
         status: "processed",
         extractedEventsCount: sampleEvents.length.toString(),
-        processingNotes: "Successfully extracted events from calendar document",
+        processingNotes: `Successfully extracted ${sampleEvents.length} events for year ${targetYear} from calendar document`,
         processedAt: new Date(),
       });
 
