@@ -77,6 +77,8 @@ const entrySchema = z.object({
 type EntryFormData = z.infer<typeof entrySchema>;
 
 type QuarterType = 'Q1' | 'Q2' | 'Q3' | 'Q4';
+type ViewModeType = 'yearly' | 'quarterly' | 'monthly';
+type MonthType = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
 const QUARTERS: { name: QuarterType; months: number[]; label: string }[] = [
   { name: 'Q1', months: [1, 2, 3], label: 'Jan - Mar' },
@@ -85,12 +87,29 @@ const QUARTERS: { name: QuarterType; months: number[]; label: string }[] = [
   { name: 'Q4', months: [10, 11, 12], label: 'Oct - Dec' }
 ];
 
+const MONTHS: { num: MonthType; name: string; short: string }[] = [
+  { num: 1, name: 'January', short: 'Jan' },
+  { num: 2, name: 'February', short: 'Feb' },
+  { num: 3, name: 'March', short: 'Mar' },
+  { num: 4, name: 'April', short: 'Apr' },
+  { num: 5, name: 'May', short: 'May' },
+  { num: 6, name: 'June', short: 'Jun' },
+  { num: 7, name: 'July', short: 'Jul' },
+  { num: 8, name: 'August', short: 'Aug' },
+  { num: 9, name: 'September', short: 'Sep' },
+  { num: 10, name: 'October', short: 'Oct' },
+  { num: 11, name: 'November', short: 'Nov' },
+  { num: 12, name: 'December', short: 'Dec' }
+];
+
 export default function FinancialOverview() {
   const { toast } = useToast();
   const { isAdminMode } = useAdmin();
   const [location, setLocation] = useLocation();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewModeType>('quarterly');
   const [selectedQuarter, setSelectedQuarter] = useState<QuarterType>('Q1');
+  const [selectedMonth, setSelectedMonth] = useState<MonthType>(1);
   const currentYear = new Date().getFullYear().toString();
 
   const form = useForm<EntryFormData>({
@@ -179,6 +198,46 @@ export default function FinancialOverview() {
   const getQuarterIncomeEntries = () => filterEntriesByQuarter(getIncomeEntries(), selectedQuarter);
   const getQuarterExpenseEntries = () => filterEntriesByQuarter(getExpenseEntries(), selectedQuarter);
 
+  // Monthly filtering
+  const filterEntriesByMonth = (entriesToFilter: FinancialEntry[], month: MonthType) => {
+    return entriesToFilter.filter(entry => {
+      const entryMonth = new Date(entry.date).getMonth() + 1;
+      return entryMonth === month;
+    });
+  };
+
+  const getMonthIncomeEntries = () => filterEntriesByMonth(getIncomeEntries(), selectedMonth);
+  const getMonthExpenseEntries = () => filterEntriesByMonth(getExpenseEntries(), selectedMonth);
+
+  // Get entries based on current view mode
+  const getViewModeIncomeEntries = () => {
+    switch (viewMode) {
+      case 'yearly': return getIncomeEntries();
+      case 'quarterly': return getQuarterIncomeEntries();
+      case 'monthly': return getMonthIncomeEntries();
+      default: return getIncomeEntries();
+    }
+  };
+
+  const getViewModeExpenseEntries = () => {
+    switch (viewMode) {
+      case 'yearly': return getExpenseEntries();
+      case 'quarterly': return getQuarterExpenseEntries();
+      case 'monthly': return getMonthExpenseEntries();
+      default: return getExpenseEntries();
+    }
+  };
+
+  const getViewModeProjectedEntries = () => {
+    const projected = getProjectedEntries();
+    switch (viewMode) {
+      case 'yearly': return projected;
+      case 'quarterly': return filterEntriesByQuarter(projected, selectedQuarter);
+      case 'monthly': return filterEntriesByMonth(projected, selectedMonth);
+      default: return projected;
+    }
+  };
+
   // Navigation functions for carousel
   const goToPreviousQuarter = () => {
     const currentIndex = QUARTERS.findIndex(q => q.name === selectedQuarter);
@@ -192,9 +251,142 @@ export default function FinancialOverview() {
     setSelectedQuarter(QUARTERS[nextIndex].name);
   };
 
+  const goToPreviousMonth = () => {
+    setSelectedMonth(prev => prev > 1 ? (prev - 1) as MonthType : 12);
+  };
+
+  const goToNextMonth = () => {
+    setSelectedMonth(prev => prev < 12 ? (prev + 1) as MonthType : 1);
+  };
+
   const getQuarterLabel = () => {
     const q = QUARTERS.find(q => q.name === selectedQuarter);
     return q ? q.label : '';
+  };
+
+  const getMonthLabel = () => {
+    const m = MONTHS.find(m => m.num === selectedMonth);
+    return m ? m.name : '';
+  };
+
+  const getMonthShort = () => {
+    const m = MONTHS.find(m => m.num === selectedMonth);
+    return m ? m.short : '';
+  };
+
+  // Get period label based on view mode
+  const getPeriodLabel = () => {
+    switch (viewMode) {
+      case 'yearly': return `Full Year ${currentYear}`;
+      case 'quarterly': return `${selectedQuarter} (${getQuarterLabel()})`;
+      case 'monthly': return getMonthLabel();
+      default: return '';
+    }
+  };
+
+  // Get totals based on view mode
+  const getViewModeTotals = () => {
+    const incomeEntries = getViewModeIncomeEntries();
+    const expenseEntries = getViewModeExpenseEntries();
+    
+    const income = incomeEntries.reduce((sum, e) => sum + parseFloat(e.amount), 0);
+    const expenses = expenseEntries.reduce((sum, e) => sum + parseFloat(e.amount), 0);
+    
+    return { income, expenses, net: income - expenses };
+  };
+
+  // Prepare chart data based on view mode
+  const prepareViewModeChartData = () => {
+    const allMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    let monthsToShow: number[];
+    switch (viewMode) {
+      case 'yearly':
+        monthsToShow = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        break;
+      case 'quarterly':
+        monthsToShow = getQuarterMonths(selectedQuarter);
+        break;
+      case 'monthly':
+        monthsToShow = [selectedMonth];
+        break;
+      default:
+        monthsToShow = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    }
+
+    return monthsToShow.map(monthNum => {
+      const month = allMonths[monthNum - 1];
+      const monthEntries = entries.filter(entry => {
+        const entryMonth = new Date(entry.date).getMonth() + 1;
+        return entryMonth === monthNum;
+      });
+      
+      const income = monthEntries
+        .filter(e => e.type === 'income')
+        .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+      
+      const expenses = monthEntries
+        .filter(e => e.type === 'expense')
+        .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+
+      return {
+        month,
+        income,
+        expenses,
+        balance: income - expenses
+      };
+    });
+  };
+
+  // Prepare category data based on view mode
+  const prepareViewModeCategoryData = () => {
+    const incomeEntries = getViewModeIncomeEntries();
+    const expenseEntries = getViewModeExpenseEntries();
+    
+    const incomeByCategory: { [key: string]: number } = {};
+    const expenseByCategory: { [key: string]: number } = {};
+
+    incomeEntries.forEach(entry => {
+      incomeByCategory[entry.category] = (incomeByCategory[entry.category] || 0) + parseFloat(entry.amount);
+    });
+
+    expenseEntries.forEach(entry => {
+      expenseByCategory[entry.category] = (expenseByCategory[entry.category] || 0) + parseFloat(entry.amount);
+    });
+
+    return {
+      income: Object.entries(incomeByCategory).map(([name, value]) => ({ name, value })),
+      expenses: Object.entries(expenseByCategory).map(([name, value]) => ({ name, value }))
+    };
+  };
+
+  // Prepare projection vs actual data based on view mode
+  const prepareViewModeProjectionVsActualData = () => {
+    const totals = getViewModeTotals();
+    
+    // Adjust projected amounts based on view mode
+    let projectionDivisor = 1;
+    switch (viewMode) {
+      case 'yearly': projectionDivisor = 1; break;
+      case 'quarterly': projectionDivisor = 4; break;
+      case 'monthly': projectionDivisor = 12; break;
+    }
+    
+    const projectedIncome = parseFloat(summary?.projectedIncome || '0') / projectionDivisor;
+    const projectedExpenses = parseFloat(summary?.projectedExpenses || '0') / projectionDivisor;
+
+    return [
+      {
+        category: 'Income',
+        projected: projectedIncome,
+        actual: totals.income
+      },
+      {
+        category: 'Expenses', 
+        projected: projectedExpenses,
+        actual: totals.expenses
+      }
+    ];
   };
 
   // Prepare chart data
@@ -706,7 +898,7 @@ export default function FinancialOverview() {
         </AccordionItem>
       </Accordion>
 
-      {/* Detailed View - Collapsible Accordion with Quarterly Carousel */}
+      {/* Detailed View - Collapsible Accordion with Time Period Navigation */}
       <Accordion type="single" collapsible defaultValue="details" className="w-full">
         <AccordionItem value="details" className="border rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden dark:border-gray-700">
           <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50 dark:hover:bg-gray-700/50" data-testid="accordion-details">
@@ -717,83 +909,183 @@ export default function FinancialOverview() {
                 </div>
                 <div className="text-left">
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Financial Details</h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Charts, categories & transactions by quarter</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Charts, categories & transactions</p>
                 </div>
               </div>
               <div className="flex items-center space-x-4">
                 <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
-                  {selectedQuarter} ({getQuarterLabel()})
+                  {getPeriodLabel()}
                 </Badge>
               </div>
             </div>
           </AccordionTrigger>
           <AccordionContent className="px-6 pb-6">
-            {/* Quarterly Carousel Navigation */}
-            <div className="flex items-center justify-center space-x-4 mb-6 mt-4">
+            {/* View Mode Selector */}
+            <div className="flex items-center justify-center space-x-2 mb-4 mt-4">
               <Button
-                variant="outline"
-                size="icon"
-                onClick={goToPreviousQuarter}
-                className="h-10 w-10 rounded-full dark:border-gray-600 dark:hover:bg-gray-700"
-                data-testid="button-prev-quarter"
+                variant={viewMode === 'yearly' ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode('yearly')}
+                className={`min-w-[80px] ${
+                  viewMode === 'yearly'
+                    ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                    : 'dark:border-gray-600 dark:hover:bg-gray-700'
+                }`}
+                data-testid="button-view-yearly"
               >
-                <ChevronLeft className="h-5 w-5" />
+                Yearly
               </Button>
-              
-              <div className="flex items-center space-x-2">
-                {QUARTERS.map((quarter) => (
-                  <Button
-                    key={quarter.name}
-                    variant={selectedQuarter === quarter.name ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedQuarter(quarter.name)}
-                    className={`min-w-[60px] ${
-                      selectedQuarter === quarter.name 
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                        : 'dark:border-gray-600 dark:hover:bg-gray-700'
-                    }`}
-                    data-testid={`button-${quarter.name.toLowerCase()}`}
-                  >
-                    {quarter.name}
-                  </Button>
-                ))}
-              </div>
-
               <Button
-                variant="outline"
-                size="icon"
-                onClick={goToNextQuarter}
-                className="h-10 w-10 rounded-full dark:border-gray-600 dark:hover:bg-gray-700"
-                data-testid="button-next-quarter"
+                variant={viewMode === 'quarterly' ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode('quarterly')}
+                className={`min-w-[80px] ${
+                  viewMode === 'quarterly'
+                    ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                    : 'dark:border-gray-600 dark:hover:bg-gray-700'
+                }`}
+                data-testid="button-view-quarterly"
               >
-                <ChevronRight className="h-5 w-5" />
+                Quarterly
+              </Button>
+              <Button
+                variant={viewMode === 'monthly' ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode('monthly')}
+                className={`min-w-[80px] ${
+                  viewMode === 'monthly'
+                    ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                    : 'dark:border-gray-600 dark:hover:bg-gray-700'
+                }`}
+                data-testid="button-view-monthly"
+              >
+                Monthly
               </Button>
             </div>
 
-            {/* Quarter Info Bar */}
+            {/* Time Period Navigation - Conditional based on view mode */}
+            {viewMode === 'quarterly' && (
+              <div className="flex items-center justify-center space-x-4 mb-6">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={goToPreviousQuarter}
+                  className="h-10 w-10 rounded-full dark:border-gray-600 dark:hover:bg-gray-700"
+                  data-testid="button-prev-quarter"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+                
+                <div className="flex items-center space-x-2">
+                  {QUARTERS.map((quarter) => (
+                    <Button
+                      key={quarter.name}
+                      variant={selectedQuarter === quarter.name ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedQuarter(quarter.name)}
+                      className={`min-w-[60px] ${
+                        selectedQuarter === quarter.name 
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                          : 'dark:border-gray-600 dark:hover:bg-gray-700'
+                      }`}
+                      data-testid={`button-${quarter.name.toLowerCase()}`}
+                    >
+                      {quarter.name}
+                    </Button>
+                  ))}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={goToNextQuarter}
+                  className="h-10 w-10 rounded-full dark:border-gray-600 dark:hover:bg-gray-700"
+                  data-testid="button-next-quarter"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
+              </div>
+            )}
+
+            {viewMode === 'monthly' && (
+              <div className="flex items-center justify-center space-x-4 mb-6">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={goToPreviousMonth}
+                  className="h-10 w-10 rounded-full dark:border-gray-600 dark:hover:bg-gray-700"
+                  data-testid="button-prev-month"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+                
+                <div className="flex items-center space-x-1 flex-wrap justify-center">
+                  {MONTHS.map((month) => (
+                    <Button
+                      key={month.num}
+                      variant={selectedMonth === month.num ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedMonth(month.num)}
+                      className={`min-w-[45px] px-2 ${
+                        selectedMonth === month.num 
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                          : 'dark:border-gray-600 dark:hover:bg-gray-700'
+                      }`}
+                      data-testid={`button-month-${month.num}`}
+                    >
+                      {month.short}
+                    </Button>
+                  ))}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={goToNextMonth}
+                  className="h-10 w-10 rounded-full dark:border-gray-600 dark:hover:bg-gray-700"
+                  data-testid="button-next-month"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
+              </div>
+            )}
+
+            {viewMode === 'yearly' && (
+              <div className="flex items-center justify-center mb-6">
+                <Badge variant="outline" className="text-sm px-4 py-2 dark:border-gray-600 dark:text-gray-300">
+                  Showing all 12 months of {currentYear}
+                </Badge>
+              </div>
+            )}
+
+            {/* Period Info Bar */}
             <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 rounded-lg border border-gray-200 dark:border-gray-600">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
                 <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Quarter</p>
-                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{selectedQuarter}</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500">{getQuarterLabel()}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Period</p>
+                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                    {viewMode === 'yearly' ? currentYear : viewMode === 'quarterly' ? selectedQuarter : getMonthShort()}
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">
+                    {viewMode === 'yearly' ? 'Full Year' : viewMode === 'quarterly' ? getQuarterLabel() : getMonthLabel()}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Income</p>
                   <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                    NAD {getQuarterlyTotals().income.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                    NAD {getViewModeTotals().income.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Expenses</p>
                   <p className="text-lg font-bold text-red-600 dark:text-red-400">
-                    NAD {getQuarterlyTotals().expenses.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                    NAD {getViewModeTotals().expenses.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Net</p>
-                  <p className={`text-lg font-bold ${getQuarterlyTotals().net >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                    NAD {getQuarterlyTotals().net.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                  <p className={`text-lg font-bold ${getViewModeTotals().net >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    NAD {getViewModeTotals().net.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
               </div>
@@ -811,66 +1103,94 @@ export default function FinancialOverview() {
               <TabsContent value="overview" className="space-y-4">
                 {/* Financial Charts */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                  {/* Monthly Trends Chart for Quarter */}
+                  {/* Trends Chart - adapts to view mode */}
                   <Card className="dark:bg-gray-700/50 dark:border-gray-600">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 dark:text-white">
                         <LineChart className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        {selectedQuarter} Monthly Trends
+                        {viewMode === 'yearly' ? 'Annual' : viewMode === 'quarterly' ? selectedQuarter : getMonthShort()} Trends
                       </CardTitle>
                       <CardDescription className="dark:text-gray-400">
-                        Income vs Expenses for {getQuarterLabel()}
+                        Income vs Expenses for {getPeriodLabel()}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <RechartsLineChart data={prepareQuarterlyMonthlyTrendData()}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="month" />
-                          <YAxis />
-                          <Tooltip formatter={(value) => [`NAD ${value.toLocaleString()}`, '']} />
-                          <Legend />
-                          <Line 
-                            type="monotone" 
-                            dataKey="income" 
-                            stroke="#10B981" 
-                            strokeWidth={3}
-                            name="Income"
-                          />
-                          <Line 
-                            type="monotone" 
-                            dataKey="expenses" 
-                            stroke="#EF4444" 
-                            strokeWidth={3}
-                            name="Expenses"
-                          />
-                          <Line 
-                            type="monotone" 
-                            dataKey="balance" 
-                            stroke="#3B82F6" 
-                            strokeWidth={2}
-                            strokeDasharray="5 5"
-                            name="Net Balance"
-                          />
-                        </RechartsLineChart>
-                      </ResponsiveContainer>
+                      {viewMode === 'monthly' ? (
+                        <div className="h-[300px] flex items-center justify-center">
+                          <div className="text-center">
+                            <div className="grid grid-cols-3 gap-8">
+                              <div>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Income</p>
+                                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                  NAD {getViewModeTotals().income.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Expenses</p>
+                                <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                  NAD {getViewModeTotals().expenses.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Net</p>
+                                <p className={`text-2xl font-bold ${getViewModeTotals().net >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                  NAD {getViewModeTotals().net.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                                </p>
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-400 dark:text-gray-500 mt-4">{getMonthLabel()} {currentYear}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height={300}>
+                          <RechartsLineChart data={prepareViewModeChartData()}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="month" />
+                            <YAxis />
+                            <Tooltip formatter={(value) => [`NAD ${value.toLocaleString()}`, '']} />
+                            <Legend />
+                            <Line 
+                              type="monotone" 
+                              dataKey="income" 
+                              stroke="#10B981" 
+                              strokeWidth={3}
+                              name="Income"
+                            />
+                            <Line 
+                              type="monotone" 
+                              dataKey="expenses" 
+                              stroke="#EF4444" 
+                              strokeWidth={3}
+                              name="Expenses"
+                            />
+                            <Line 
+                              type="monotone" 
+                              dataKey="balance" 
+                              stroke="#3B82F6" 
+                              strokeWidth={2}
+                              strokeDasharray="5 5"
+                              name="Net Balance"
+                            />
+                          </RechartsLineChart>
+                        </ResponsiveContainer>
+                      )}
                     </CardContent>
                   </Card>
 
-                  {/* Projected vs Actual Comparison for Quarter */}
+                  {/* Projected vs Actual Comparison - adapts to view mode */}
                   <Card className="dark:bg-gray-700/50 dark:border-gray-600">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 dark:text-white">
                         <BarChart3 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                        {selectedQuarter} Projected vs Actual
+                        {viewMode === 'yearly' ? 'Annual' : viewMode === 'quarterly' ? selectedQuarter : getMonthShort()} Projected vs Actual
                       </CardTitle>
                       <CardDescription className="dark:text-gray-400">
-                        Performance against quarterly projections
+                        Performance against {viewMode === 'yearly' ? 'annual' : viewMode === 'quarterly' ? 'quarterly' : 'monthly'} projections
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={prepareQuarterlyProjectionVsActualData()}>
+                        <BarChart data={prepareViewModeProjectionVsActualData()}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="category" />
                           <YAxis />
@@ -884,22 +1204,22 @@ export default function FinancialOverview() {
                   </Card>
                 </div>
 
-                {/* Category Breakdown Charts for Quarter */}
+                {/* Category Breakdown Charts - adapts to view mode */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                   {/* Income Categories */}
                   <Card className="dark:bg-gray-700/50 dark:border-gray-600">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 dark:text-white">
                         <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
-                        {selectedQuarter} Income by Category
+                        {viewMode === 'yearly' ? 'Annual' : viewMode === 'quarterly' ? selectedQuarter : getMonthShort()} Income by Category
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {prepareQuarterlyCategoryData().income.length > 0 ? (
+                      {prepareViewModeCategoryData().income.length > 0 ? (
                         <ResponsiveContainer width="100%" height={250}>
                           <PieChart>
                             <Pie
-                              data={prepareQuarterlyCategoryData().income}
+                              data={prepareViewModeCategoryData().income}
                               cx="50%"
                               cy="50%"
                               labelLine={false}
@@ -908,7 +1228,7 @@ export default function FinancialOverview() {
                               fill="#8884d8"
                               dataKey="value"
                             >
-                              {prepareQuarterlyCategoryData().income.map((entry, index) => (
+                              {prepareViewModeCategoryData().income.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                               ))}
                             </Pie>
@@ -917,7 +1237,7 @@ export default function FinancialOverview() {
                         </ResponsiveContainer>
                       ) : (
                         <div className="flex items-center justify-center h-[250px] text-gray-500 dark:text-gray-400">
-                          No income data for {selectedQuarter}
+                          No income data for {getPeriodLabel()}
                         </div>
                       )}
                     </CardContent>
@@ -928,15 +1248,15 @@ export default function FinancialOverview() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 dark:text-white">
                         <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
-                        {selectedQuarter} Expenses by Category
+                        {viewMode === 'yearly' ? 'Annual' : viewMode === 'quarterly' ? selectedQuarter : getMonthShort()} Expenses by Category
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {prepareQuarterlyCategoryData().expenses.length > 0 ? (
+                      {prepareViewModeCategoryData().expenses.length > 0 ? (
                         <ResponsiveContainer width="100%" height={250}>
                           <PieChart>
                             <Pie
-                              data={prepareQuarterlyCategoryData().expenses}
+                              data={prepareViewModeCategoryData().expenses}
                               cx="50%"
                               cy="50%"
                               labelLine={false}
@@ -945,7 +1265,7 @@ export default function FinancialOverview() {
                               fill="#8884d8"
                               dataKey="value"
                             >
-                              {prepareQuarterlyCategoryData().expenses.map((entry, index) => (
+                              {prepareViewModeCategoryData().expenses.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                               ))}
                             </Pie>
@@ -954,25 +1274,25 @@ export default function FinancialOverview() {
                         </ResponsiveContainer>
                       ) : (
                         <div className="flex items-center justify-center h-[250px] text-gray-500 dark:text-gray-400">
-                          No expense data for {selectedQuarter}
+                          No expense data for {getPeriodLabel()}
                         </div>
                       )}
                     </CardContent>
                   </Card>
                 </div>
                 
-                {/* Recent Income/Expenses for Quarter */}
+                {/* Recent Income/Expenses - adapts to view mode */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <Card className="dark:bg-gray-700/50 dark:border-gray-600">
                     <CardHeader>
                       <CardTitle className="flex items-center space-x-2 dark:text-white">
                         <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
-                        <span>{selectedQuarter} Income</span>
+                        <span>{viewMode === 'yearly' ? 'Annual' : viewMode === 'quarterly' ? selectedQuarter : getMonthShort()} Income</span>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
-                        {getQuarterIncomeEntries().slice(0, 5).map((entry) => (
+                        {getViewModeIncomeEntries().slice(0, 5).map((entry) => (
                           <div key={entry.id} className="flex justify-between items-center">
                             <div>
                               <p className="font-medium text-sm dark:text-white">{entry.description}</p>
@@ -988,8 +1308,8 @@ export default function FinancialOverview() {
                             </div>
                           </div>
                         ))}
-                        {getQuarterIncomeEntries().length === 0 && (
-                          <p className="text-muted-foreground dark:text-gray-400 text-sm">No income entries for {selectedQuarter}</p>
+                        {getViewModeIncomeEntries().length === 0 && (
+                          <p className="text-muted-foreground dark:text-gray-400 text-sm">No income entries for {getPeriodLabel()}</p>
                         )}
                       </div>
                     </CardContent>
@@ -999,12 +1319,12 @@ export default function FinancialOverview() {
                     <CardHeader>
                       <CardTitle className="flex items-center space-x-2 dark:text-white">
                         <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
-                        <span>{selectedQuarter} Expenses</span>
+                        <span>{viewMode === 'yearly' ? 'Annual' : viewMode === 'quarterly' ? selectedQuarter : getMonthShort()} Expenses</span>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
-                        {getQuarterExpenseEntries().slice(0, 5).map((entry) => (
+                        {getViewModeExpenseEntries().slice(0, 5).map((entry) => (
                           <div key={entry.id} className="flex justify-between items-center">
                             <div>
                               <p className="font-medium text-sm dark:text-white">{entry.description}</p>
@@ -1020,8 +1340,8 @@ export default function FinancialOverview() {
                             </div>
                           </div>
                         ))}
-                        {getQuarterExpenseEntries().length === 0 && (
-                          <p className="text-muted-foreground dark:text-gray-400 text-sm">No expense entries for {selectedQuarter}</p>
+                        {getViewModeExpenseEntries().length === 0 && (
+                          <p className="text-muted-foreground dark:text-gray-400 text-sm">No expense entries for {getPeriodLabel()}</p>
                         )}
                       </div>
                     </CardContent>
@@ -1032,12 +1352,12 @@ export default function FinancialOverview() {
               <TabsContent value="income" className="space-y-4">
                 <Card className="dark:bg-gray-700/50 dark:border-gray-600">
                   <CardHeader>
-                    <CardTitle className="dark:text-white">{selectedQuarter} Income Entries</CardTitle>
-                    <CardDescription className="dark:text-gray-400">Income transactions for {getQuarterLabel()}</CardDescription>
+                    <CardTitle className="dark:text-white">{viewMode === 'yearly' ? 'Annual' : viewMode === 'quarterly' ? selectedQuarter : getMonthShort()} Income Entries</CardTitle>
+                    <CardDescription className="dark:text-gray-400">Income transactions for {getPeriodLabel()}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {getQuarterIncomeEntries().map((entry) => (
+                      {getViewModeIncomeEntries().map((entry) => (
                         <div key={entry.id} className="flex justify-between items-center p-3 border rounded-lg dark:border-gray-600 dark:bg-gray-800/50">
                           <div>
                             <p className="font-medium dark:text-white">{entry.description}</p>
@@ -1057,10 +1377,10 @@ export default function FinancialOverview() {
                           </div>
                         </div>
                       ))}
-                      {getQuarterIncomeEntries().length === 0 && (
+                      {getViewModeIncomeEntries().length === 0 && (
                         <div className="text-center py-8">
                           <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground dark:text-gray-500 mb-2" />
-                          <p className="text-muted-foreground dark:text-gray-400">No income entries for {selectedQuarter}</p>
+                          <p className="text-muted-foreground dark:text-gray-400">No income entries for {getPeriodLabel()}</p>
                         </div>
                       )}
                     </div>
@@ -1071,12 +1391,12 @@ export default function FinancialOverview() {
               <TabsContent value="expenses" className="space-y-4">
                 <Card className="dark:bg-gray-700/50 dark:border-gray-600">
                   <CardHeader>
-                    <CardTitle className="dark:text-white">{selectedQuarter} Expense Entries</CardTitle>
-                    <CardDescription className="dark:text-gray-400">Expense transactions for {getQuarterLabel()}</CardDescription>
+                    <CardTitle className="dark:text-white">{viewMode === 'yearly' ? 'Annual' : viewMode === 'quarterly' ? selectedQuarter : getMonthShort()} Expense Entries</CardTitle>
+                    <CardDescription className="dark:text-gray-400">Expense transactions for {getPeriodLabel()}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {getQuarterExpenseEntries().map((entry) => (
+                      {getViewModeExpenseEntries().map((entry) => (
                         <div key={entry.id} className="flex justify-between items-center p-3 border rounded-lg dark:border-gray-600 dark:bg-gray-800/50">
                           <div>
                             <p className="font-medium dark:text-white">{entry.description}</p>
@@ -1096,10 +1416,10 @@ export default function FinancialOverview() {
                           </div>
                         </div>
                       ))}
-                      {getQuarterExpenseEntries().length === 0 && (
+                      {getViewModeExpenseEntries().length === 0 && (
                         <div className="text-center py-8">
                           <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground dark:text-gray-500 mb-2" />
-                          <p className="text-muted-foreground dark:text-gray-400">No expense entries for {selectedQuarter}</p>
+                          <p className="text-muted-foreground dark:text-gray-400">No expense entries for {getPeriodLabel()}</p>
                         </div>
                       )}
                     </div>
@@ -1110,12 +1430,12 @@ export default function FinancialOverview() {
               <TabsContent value="projections" className="space-y-4">
                 <Card className="dark:bg-gray-700/50 dark:border-gray-600">
                   <CardHeader>
-                    <CardTitle className="dark:text-white">{selectedQuarter} Financial Projections</CardTitle>
-                    <CardDescription className="dark:text-gray-400">Projected income and expenses for {getQuarterLabel()}</CardDescription>
+                    <CardTitle className="dark:text-white">{viewMode === 'yearly' ? 'Annual' : viewMode === 'quarterly' ? selectedQuarter : getMonthShort()} Financial Projections</CardTitle>
+                    <CardDescription className="dark:text-gray-400">Projected income and expenses for {getPeriodLabel()}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {filterEntriesByQuarter(getProjectedEntries(), selectedQuarter).map((entry) => (
+                      {getViewModeProjectedEntries().map((entry) => (
                         <div key={entry.id} className="flex justify-between items-center p-3 border rounded-lg dark:border-gray-600 dark:bg-gray-800/50">
                           <div>
                             <p className="font-medium dark:text-white">{entry.description}</p>
@@ -1136,10 +1456,10 @@ export default function FinancialOverview() {
                           </div>
                         </div>
                       ))}
-                      {filterEntriesByQuarter(getProjectedEntries(), selectedQuarter).length === 0 && (
+                      {getViewModeProjectedEntries().length === 0 && (
                         <div className="text-center py-8">
                           <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground dark:text-gray-500 mb-2" />
-                          <p className="text-muted-foreground dark:text-gray-400">No projected entries for {selectedQuarter}</p>
+                          <p className="text-muted-foreground dark:text-gray-400">No projected entries for {getPeriodLabel()}</p>
                         </div>
                       )}
                     </div>
