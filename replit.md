@@ -109,6 +109,10 @@ The application is designed for deployment on Replit with the following setup:
 - ✅ **Integrated actual NKF EXCO members from 2022-2026 term as user accounts (August 6, 2025)**
 - ✅ **Enhanced admin security with confirmation dialogs and audit logging (August 6, 2025)**
 - ✅ **Implemented comprehensive discussion room management with admin overlays (August 6, 2025)**
+- ✅ **Added multi-year calendar navigation with year selector buttons (November 26, 2025)**
+- ✅ **Fixed calendar document processing to detect year from filename (e.g., 'NKF Calendar 2026.pdf' creates 2026 events)**
+- ✅ **Enhanced document status display with processing notes and auto-refresh**
+- ✅ **Dashboard Finances card now shows previous month summary with 5 key figures**
 - ✅ Ready for deployment at custom subdomain (exco-portal.replit.app requested)
 
 The architecture prioritizes governance functionality, financial transparency, and secure communication while maintaining real-time collaboration capabilities for executive decision-making.
