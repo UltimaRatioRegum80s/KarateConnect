@@ -37,7 +37,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import { Link } from "wouter";
-import type { User, ChatRoom } from "@shared/schema";
+import type { User, ChatRoom, FinancialEntry } from "@shared/schema";
 
 export default function EnhancedDashboard() {
   const { toast } = useToast();
@@ -72,6 +72,73 @@ export default function EnhancedDashboard() {
     refetchInterval: 5000,
     refetchIntervalInBackground: true,
   }) as { data: (ChatRoom & { memberCount: number; messageCount: number; unreadCount: number })[] | undefined; isLoading: boolean };
+
+  const currentYear = new Date().getFullYear().toString();
+  const { data: financialEntries } = useQuery({
+    queryKey: ["/api/financial/entries", currentYear],
+    enabled: isAuthenticated,
+  }) as { data: FinancialEntry[] | undefined };
+
+  const getPreviousMonthSummary = () => {
+    const now = new Date();
+    const prevMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+    const prevMonthYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthLabel = `${monthNames[prevMonth]} ${prevMonthYear}`;
+    
+    if (!financialEntries || financialEntries.length === 0) {
+      return {
+        monthLabel,
+        income: 0,
+        expenses: 0,
+        projectedIncome: 0,
+        projectedExpenses: 0,
+        netBalance: 0
+      };
+    }
+
+    let income = 0;
+    let expenses = 0;
+    let projectedIncome = 0;
+    let projectedExpenses = 0;
+
+    financialEntries.forEach((entry: any) => {
+      const entryDate = new Date(entry.date);
+      if (entryDate.getMonth() === prevMonth && entryDate.getFullYear() === prevMonthYear) {
+        const amount = parseFloat(entry.amount) || 0;
+        const isProjected = entry.isProjected === 'true';
+        
+        if (entry.type === 'income') {
+          if (isProjected) {
+            projectedIncome += amount;
+          } else {
+            income += amount;
+          }
+        } else if (entry.type === 'expense') {
+          if (isProjected) {
+            projectedExpenses += amount;
+          } else {
+            expenses += amount;
+          }
+        }
+      }
+    });
+
+    const netBalance = (income + projectedIncome) - (expenses + projectedExpenses);
+
+    return {
+      monthLabel,
+      income,
+      expenses,
+      projectedIncome,
+      projectedExpenses,
+      netBalance
+    };
+  };
+
+  const prevMonthSummary = getPreviousMonthSummary();
 
   const getPersonalizedWelcome = () => {
     if (!user) return welcomeMessage;
@@ -245,8 +312,8 @@ export default function EnhancedDashboard() {
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Finances</h2>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Financial overview, charts & projections</p>
                 </div>
-                <Badge variant="secondary" className="bg-green-100 text-green-700">
-                  NAD 42,500
+                <Badge variant="secondary" className={`${prevMonthSummary.netBalance >= 0 ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400'}`}>
+                  NAD {prevMonthSummary.netBalance.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
                 </Badge>
               </div>
             </AccordionTrigger>
@@ -255,39 +322,71 @@ export default function EnhancedDashboard() {
                 <div className="relative">
                   <Link href="/financial">
                     <div className="cursor-pointer group">
-                      <Card className="hover:shadow-md transition-shadow border-2 border-transparent hover:border-green-200">
+                      <Card className="hover:shadow-md transition-shadow border-2 border-transparent hover:border-green-200 dark:hover:border-green-700">
                         <CardContent className="p-6">
                           <div className="flex justify-between items-start mb-4">
                             <div>
-                              <div className="text-3xl font-bold text-green-600">NAD 42,500</div>
-                              <p className="text-sm text-gray-500 mt-1">
-                                +15.2% from last month
+                              <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                                {prevMonthSummary.monthLabel} Summary
+                              </p>
+                              <div className={`text-3xl font-bold ${prevMonthSummary.netBalance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                NAD {prevMonthSummary.netBalance.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                              </div>
+                              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                Net Balance
                               </p>
                             </div>
-                            <Button variant="ghost" size="sm" className="group-hover:bg-green-100">
-                              <span className="mr-2">View Charts</span>
-                              <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                            <Button variant="ghost" size="sm" className="group-hover:bg-green-100 dark:group-hover:bg-green-900/30">
+                              <span className="mr-2 dark:text-gray-300">View Charts</span>
+                              <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform dark:text-gray-300" />
                             </Button>
                           </div>
                           
-                          <div className="grid grid-cols-2 gap-6 mt-4">
-                            <div className="bg-green-50 rounded-lg p-4">
+                          {/* Actual Income & Expenses */}
+                          <div className="grid grid-cols-2 gap-4 mt-4">
+                            <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
                               <div className="flex items-center space-x-2 mb-2">
-                                <TrendingUp className="h-4 w-4 text-green-600" />
-                                <span className="text-sm font-medium text-gray-700">Income</span>
+                                <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Income</span>
                               </div>
-                              <div className="text-xl font-bold text-green-600">+NAD 18,750</div>
+                              <div className="text-xl font-bold text-green-600 dark:text-green-400">
+                                +NAD {prevMonthSummary.income.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                              </div>
                             </div>
-                            <div className="bg-red-50 rounded-lg p-4">
+                            <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4">
                               <div className="flex items-center space-x-2 mb-2">
-                                <TrendingUp className="h-4 w-4 text-red-600 rotate-180" />
-                                <span className="text-sm font-medium text-gray-700">Expenses</span>
+                                <TrendingUp className="h-4 w-4 text-red-600 dark:text-red-400 rotate-180" />
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Expenses</span>
                               </div>
-                              <div className="text-xl font-bold text-red-600">-NAD 12,250</div>
+                              <div className="text-xl font-bold text-red-600 dark:text-red-400">
+                                -NAD {prevMonthSummary.expenses.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                              </div>
                             </div>
                           </div>
 
-                          <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
+                          {/* Projected Income & Expenses */}
+                          <div className="grid grid-cols-2 gap-4 mt-3">
+                            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <Target className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Projected Income</span>
+                              </div>
+                              <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                                +NAD {prevMonthSummary.projectedIncome.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                              </div>
+                            </div>
+                            <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <Target className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Projected Expenses</span>
+                              </div>
+                              <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
+                                -NAD {prevMonthSummary.projectedExpenses.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
                             <span>Click to view detailed financial charts and reports</span>
                             <ChevronRight className="h-4 w-4" />
                           </div>
