@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/contexts/AdminContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -10,12 +11,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Link, useLocation } from "wouter";
-import { Home, Settings, ChevronDown, BarChart3, Database, Users } from "lucide-react";
+import { Home, Settings, ChevronDown, BarChart3, Database, Users, Sun, Moon } from "lucide-react";
 import type { User } from "@shared/schema";
 
 export default function Header() {
   const { user } = useAuth() as { user: User | undefined };
   const { isAdminMode, toggleAdminMode } = useAdmin();
+  const { theme, toggleTheme } = useTheme();
   const [location] = useLocation();
 
   const handleInstallApp = () => {
@@ -41,7 +43,7 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo and Home Button */}
@@ -53,8 +55,8 @@ export default function Header() {
                 size="sm"
                 className={`relative flex items-center transition-all duration-300 ${
                   location === "/" 
-                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200" 
-                    : "hover:bg-blue-50 border-blue-200"
+                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 dark:shadow-blue-900" 
+                    : "hover:bg-blue-50 dark:hover:bg-blue-900/20 border-blue-200 dark:border-blue-700"
                 }`}
                 data-testid="button-home"
                 title={location === "/" ? "Scroll to top" : "Go to Dashboard"}
@@ -78,9 +80,9 @@ export default function Header() {
               <i className="fas fa-hand-fist text-blue-600 text-2xl"></i>
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">NKF EXCO Portal</h1>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">NKF EXCO Portal</h1>
               <div className="flex items-center space-x-2">
-                <p className="text-sm text-gray-600">Executive Committee Dashboard</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Executive Committee Dashboard</p>
                 {isAdminMode && (
                   <Badge variant="destructive" className="text-xs animate-pulse">
                     ADMIN MODE
@@ -93,10 +95,10 @@ export default function Header() {
           {/* User Info and Actions */}
           <div className="flex items-center space-x-4">
             <div className="text-right">
-              <div className="text-sm font-medium text-gray-900">
+              <div className="text-sm font-medium text-gray-900 dark:text-white">
                 {user?.name || "Admin"}
               </div>
-              <div className="text-xs text-red-600 font-medium">
+              <div className="text-xs text-red-600 dark:text-red-400 font-medium">
                 {user?.title || "President"}
               </div>
             </div>
@@ -153,6 +155,25 @@ export default function Header() {
               </Button>
             )}
             
+            {/* Theme Toggle Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleTheme}
+              className="flex items-center"
+              data-testid="button-theme-toggle"
+              title={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+            >
+              {theme === "light" ? (
+                <Moon className="h-4 w-4" />
+              ) : (
+                <Sun className="h-4 w-4" />
+              )}
+              <span className="hidden sm:inline ml-2">
+                {theme === "light" ? "Dark" : "Light"}
+              </span>
+            </Button>
+
             {/* Install App Button */}
             <Button
               variant="outline"

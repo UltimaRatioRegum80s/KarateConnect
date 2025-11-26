@@ -114,14 +114,14 @@ export default function EnhancedDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Header />
         <main className="container mx-auto px-6 py-8">
           <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded mb-6 w-1/3"></div>
+            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded mb-6 w-1/3"></div>
             <div className="space-y-4">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-20 bg-gray-200 rounded"></div>
+                <div key={i} className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
               ))}
             </div>
           </div>
@@ -132,12 +132,12 @@ export default function EnhancedDashboard() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Header />
         <main className="container mx-auto px-6 py-8">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Authentication Required</h1>
-            <p className="text-gray-600">Please log in to access the dashboard.</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Authentication Required</h1>
+            <p className="text-gray-600 dark:text-gray-400">Please log in to access the dashboard.</p>
           </div>
         </main>
       </div>
@@ -145,7 +145,7 @@ export default function EnhancedDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Header />
       
       <main className="container mx-auto px-6 py-8 space-y-6">
@@ -235,15 +235,15 @@ export default function EnhancedDashboard() {
         <Accordion type="multiple" defaultValue={["finances"]} className="space-y-4">
           
           {/* FINANCES SECTION */}
-          <AccordionItem value="finances" className="border rounded-lg bg-white shadow-sm overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50" data-testid="accordion-finances">
+          <AccordionItem value="finances" className="border rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden dark:border-gray-700">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50 dark:hover:bg-gray-700/50" data-testid="accordion-finances">
               <div className="flex items-center space-x-4 w-full">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <DollarSign className="h-6 w-6 text-green-600" />
+                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                  <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
                 <div className="flex-1 text-left">
-                  <h2 className="text-lg font-semibold text-gray-900">Finances</h2>
-                  <p className="text-sm text-gray-500">Financial overview, charts & projections</p>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Finances</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Financial overview, charts & projections</p>
                 </div>
                 <Badge variant="secondary" className="bg-green-100 text-green-700">
                   NAD 42,500
@@ -308,15 +308,15 @@ export default function EnhancedDashboard() {
           </AccordionItem>
 
           {/* CALENDAR SECTION */}
-          <AccordionItem value="calendar" className="border rounded-lg bg-white shadow-sm overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50" data-testid="accordion-calendar">
+          <AccordionItem value="calendar" className="border rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden dark:border-gray-700">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50 dark:hover:bg-gray-700/50" data-testid="accordion-calendar">
               <div className="flex items-center space-x-4 w-full">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Calendar className="h-6 w-6 text-blue-600" />
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                  <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex-1 text-left">
-                  <h2 className="text-lg font-semibold text-gray-900">Calendar</h2>
-                  <p className="text-sm text-gray-500">NKF events, meetings & schedules</p>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Calendar</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">NKF events, meetings & schedules</p>
                 </div>
                 <Badge variant="secondary" className="bg-blue-100 text-blue-700">
                   12 Events
@@ -388,15 +388,15 @@ export default function EnhancedDashboard() {
           </AccordionItem>
 
           {/* STATEMENTS SECTION */}
-          <AccordionItem value="statements" className="border rounded-lg bg-white shadow-sm overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50" data-testid="accordion-statements">
+          <AccordionItem value="statements" className="border rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden dark:border-gray-700">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50 dark:hover:bg-gray-700/50" data-testid="accordion-statements">
               <div className="flex items-center space-x-4 w-full">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <FileText className="h-6 w-6 text-purple-600" />
+                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                  <FileText className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div className="flex-1 text-left">
-                  <h2 className="text-lg font-semibold text-gray-900">Statements</h2>
-                  <p className="text-sm text-gray-500">Bank statement uploads & analysis</p>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Statements</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Bank statement uploads & analysis</p>
                 </div>
                 <Badge variant="secondary" className="bg-purple-100 text-purple-700">
                   3 Statements
@@ -472,15 +472,15 @@ export default function EnhancedDashboard() {
           </AccordionItem>
 
           {/* COMMUNICATION CHANNELS SECTION */}
-          <AccordionItem value="communication" className="border rounded-lg bg-white shadow-sm overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50" data-testid="accordion-communication">
+          <AccordionItem value="communication" className="border rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden dark:border-gray-700">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50 dark:hover:bg-gray-700/50" data-testid="accordion-communication">
               <div className="flex items-center space-x-4 w-full">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <MessageSquare className="h-6 w-6 text-orange-600" />
+                <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                  <MessageSquare className="h-6 w-6 text-orange-600 dark:text-orange-400" />
                 </div>
                 <div className="flex-1 text-left">
-                  <h2 className="text-lg font-semibold text-gray-900">Communication Channels</h2>
-                  <p className="text-sm text-gray-500">Chat rooms & team discussions</p>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Communication Channels</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Chat rooms & team discussions</p>
                 </div>
                 <div className="flex items-center space-x-2">
                   {totalUnreadMessages > 0 && (
