@@ -94,10 +94,11 @@ export default function Calendar() {
     enabled: isAuthenticated,
   });
 
-  // Fetch calendar documents
+  // Fetch calendar documents with auto-refresh for processing status
   const { data: documents = [], isLoading: documentsLoading } = useQuery<CalendarDocument[]>({
     queryKey: ["/api/calendar/documents"],
     enabled: isAuthenticated,
+    refetchInterval: 3000,
   });
 
   // Create event mutation
@@ -302,7 +303,34 @@ export default function Calendar() {
           <div className="flex items-center space-x-2">
             <CalendarIcon className="h-6 w-6 text-green-600" />
             <h1 className="text-2xl font-bold">NKF Calendar</h1>
-            <Badge variant="outline">{getYear(currentDate)}</Badge>
+            {/* Year Navigation */}
+            <div className="flex items-center space-x-1 ml-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigateYear("prev")}
+                className="h-8 w-8 p-0"
+                data-testid="button-prev-year"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Badge 
+                variant="outline" 
+                className="px-3 py-1 font-semibold text-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                data-testid="badge-current-year"
+              >
+                {getYear(currentDate)}
+              </Badge>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigateYear("next")}
+                className="h-8 w-8 p-0"
+                data-testid="button-next-year"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
         
@@ -732,19 +760,19 @@ export default function Calendar() {
                     No documents uploaded yet
                   </p>
                 ) : (
-                  documents.slice(0, 3).map(doc => (
+                  documents.slice(0, 5).map(doc => (
                     <div key={doc.id} className="flex items-start space-x-3 p-3 rounded border">
                       <FileText className="h-4 w-4 mt-1" />
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{doc.originalName}</p>
+                        <p className="font-medium text-sm truncate" title={doc.originalName}>{doc.originalName}</p>
                         <div className="flex items-center space-x-2 mt-1">
                           {doc.status === "processed" ? (
-                            <Badge className="bg-green-100 text-green-800">
+                            <Badge className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-400">
                               <CheckCircle className="h-3 w-3 mr-1" />
                               Processed
                             </Badge>
                           ) : doc.status === "processing" ? (
-                            <Badge className="bg-yellow-100 text-yellow-800">
+                            <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-400">
                               <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                               Processing
                             </Badge>
@@ -755,9 +783,14 @@ export default function Calendar() {
                             </Badge>
                           )}
                         </div>
-                        {doc.status === "processed" && (
+                        {doc.status === "processed" && doc.extractedEventsCount && (
                           <p className="text-xs text-muted-foreground mt-1">
                             {doc.extractedEventsCount} events extracted
+                          </p>
+                        )}
+                        {doc.processingNotes && (
+                          <p className="text-xs text-muted-foreground mt-1 truncate" title={doc.processingNotes}>
+                            {doc.processingNotes}
                           </p>
                         )}
                       </div>
