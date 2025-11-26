@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { ChevronDown } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -212,6 +214,45 @@ export default function FinancialOverview() {
 
   const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#F97316'];
 
+  // Calculate quarterly data from entries
+  const prepareQuarterlyData = () => {
+    const quarters = [
+      { name: 'Q1', months: [1, 2, 3], label: 'Jan - Mar' },
+      { name: 'Q2', months: [4, 5, 6], label: 'Apr - Jun' },
+      { name: 'Q3', months: [7, 8, 9], label: 'Jul - Sep' },
+      { name: 'Q4', months: [10, 11, 12], label: 'Oct - Dec' }
+    ];
+
+    return quarters.map(quarter => {
+      const quarterEntries = entries.filter(entry => {
+        const entryMonth = new Date(entry.date).getMonth() + 1;
+        return quarter.months.includes(entryMonth);
+      });
+
+      const income = quarterEntries
+        .filter(e => e.type === 'income')
+        .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+
+      const expenses = quarterEntries
+        .filter(e => e.type === 'expense')
+        .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+
+      return {
+        quarter: quarter.name,
+        label: quarter.label,
+        income,
+        expenses,
+        net: income - expenses,
+        transactionCount: quarterEntries.length
+      };
+    });
+  };
+
+  const quarterlyData = prepareQuarterlyData();
+  const totalYearlyIncome = quarterlyData.reduce((sum, q) => sum + q.income, 0);
+  const totalYearlyExpenses = quarterlyData.reduce((sum, q) => sum + q.expenses, 0);
+  const totalYearlyNet = totalYearlyIncome - totalYearlyExpenses;
+
   if (summaryLoading || entriesLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -402,90 +443,134 @@ export default function FinancialOverview() {
 
       <Separator />
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Current Balance</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {summary ? formatCurrency(summary.currentBalance, summary.currency) : "NAD 0.00"}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              As of {summary ? format(new Date(summary.lastUpdated), "MMM d, yyyy") : "today"}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Projected Income</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {summary ? formatCurrency(summary.projectedIncome, summary.currency) : "NAD 0.00"}
-            </div>
-            <div className="mt-2">
-              <div className="text-xs text-muted-foreground mb-1">
-                Actual: {summary ? formatCurrency(summary.actualIncome, summary.currency) : "NAD 0.00"}
+      {/* Summary Accordion with Quarterly Breakdown */}
+      <Accordion type="single" collapsible defaultValue="summary" className="w-full">
+        <AccordionItem value="summary" className="border rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden dark:border-gray-700">
+          <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50 dark:hover:bg-gray-700/50" data-testid="accordion-summary">
+            <div className="flex items-center justify-between w-full pr-4">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                  <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div className="text-left">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Summary</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Quarterly financial breakdown for {currentYear}</p>
+                </div>
               </div>
-              <Progress 
-                value={summary ? calculateProgressPercentage(summary.actualIncome, summary.projectedIncome) : 0} 
-                className="h-2"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Projected Expenses</CardTitle>
-            <TrendingDown className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {summary ? formatCurrency(summary.projectedExpenses, summary.currency) : "NAD 0.00"}
-            </div>
-            <div className="mt-2">
-              <div className="text-xs text-muted-foreground mb-1">
-                Actual: {summary ? formatCurrency(summary.actualExpenses, summary.currency) : "NAD 0.00"}
+              <div className="flex items-center space-x-6 text-right">
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Current Balance</p>
+                  <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                    {summary ? formatCurrency(summary.currentBalance, summary.currency) : "NAD 0.00"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Year Net</p>
+                  <p className={`text-lg font-bold ${totalYearlyNet >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    NAD {totalYearlyNet.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
               </div>
-              <Progress 
-                value={summary ? calculateProgressPercentage(summary.actualExpenses, summary.projectedExpenses) : 0} 
-                className="h-2"
-              />
             </div>
-          </CardContent>
-        </Card>
+          </AccordionTrigger>
+          <AccordionContent className="px-6 pb-6">
+            {/* Quarterly Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+              {quarterlyData.map((quarter) => (
+                <Card key={quarter.quarter} className="bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600" data-testid={`card-${quarter.quarter.toLowerCase()}`}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
+                        {quarter.quarter}
+                      </CardTitle>
+                      <Badge variant="outline" className="text-xs dark:border-gray-500 dark:text-gray-300">
+                        {quarter.label}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <TrendingUp className="h-4 w-4 text-green-500" />
+                        <span className="text-sm text-gray-600 dark:text-gray-300">Income</span>
+                      </div>
+                      <span className="text-sm font-semibold text-green-600 dark:text-green-400">
+                        NAD {quarter.income.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <TrendingDown className="h-4 w-4 text-red-500" />
+                        <span className="text-sm text-gray-600 dark:text-gray-300">Expenses</span>
+                      </div>
+                      <span className="text-sm font-semibold text-red-600 dark:text-red-400">
+                        NAD {quarter.expenses.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <Separator className="dark:bg-gray-600" />
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Target className="h-4 w-4 text-blue-500" />
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Net</span>
+                      </div>
+                      <span className={`text-sm font-bold ${quarter.net >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        NAD {quarter.net.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    {quarter.transactionCount > 0 && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 text-center pt-1">
+                        {quarter.transactionCount} transaction{quarter.transactionCount !== 1 ? 's' : ''}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Net Projection</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${
-              summary && (parseFloat(summary.projectedIncome) - parseFloat(summary.projectedExpenses)) >= 0 
-                ? "text-green-600" 
-                : "text-red-600"
-            }`}>
-              {summary 
-                ? formatCurrency(
-                    (parseFloat(summary.projectedIncome) - parseFloat(summary.projectedExpenses)).toString(), 
-                    summary.currency
-                  )
-                : "NAD 0.00"
-              }
+            {/* Year Totals Row */}
+            <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg border border-gray-200 dark:border-gray-600">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Current Balance</p>
+                  <p className="text-xl font-bold text-green-600 dark:text-green-400">
+                    {summary ? formatCurrency(summary.currentBalance, summary.currency) : "NAD 0.00"}
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">
+                    As of {summary ? format(new Date(summary.lastUpdated), "MMM d, yyyy") : "today"}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total Income</p>
+                  <p className="text-xl font-bold text-green-600 dark:text-green-400">
+                    NAD {totalYearlyIncome.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                  </p>
+                  <div className="flex items-center justify-center text-xs text-gray-400 dark:text-gray-500">
+                    <span>Projected: {summary ? formatCurrency(summary.projectedIncome, summary.currency) : "NAD 0.00"}</span>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total Expenses</p>
+                  <p className="text-xl font-bold text-red-600 dark:text-red-400">
+                    NAD {totalYearlyExpenses.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                  </p>
+                  <div className="flex items-center justify-center text-xs text-gray-400 dark:text-gray-500">
+                    <span>Projected: {summary ? formatCurrency(summary.projectedExpenses, summary.currency) : "NAD 0.00"}</span>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Net Result</p>
+                  <p className={`text-xl font-bold ${totalYearlyNet >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    NAD {totalYearlyNet.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">
+                    {totalYearlyNet >= 0 ? 'Surplus' : 'Deficit'}
+                  </p>
+                </div>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Projected income minus expenses
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
       {/* Detailed View */}
       <Tabs defaultValue="overview" className="space-y-4">
