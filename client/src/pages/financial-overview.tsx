@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -76,11 +76,21 @@ const entrySchema = z.object({
 
 type EntryFormData = z.infer<typeof entrySchema>;
 
+type QuarterType = 'Q1' | 'Q2' | 'Q3' | 'Q4';
+
+const QUARTERS: { name: QuarterType; months: number[]; label: string }[] = [
+  { name: 'Q1', months: [1, 2, 3], label: 'Jan - Mar' },
+  { name: 'Q2', months: [4, 5, 6], label: 'Apr - Jun' },
+  { name: 'Q3', months: [7, 8, 9], label: 'Jul - Sep' },
+  { name: 'Q4', months: [10, 11, 12], label: 'Oct - Dec' }
+];
+
 export default function FinancialOverview() {
   const { toast } = useToast();
   const { isAdminMode } = useAdmin();
   const [location, setLocation] = useLocation();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedQuarter, setSelectedQuarter] = useState<QuarterType>('Q1');
   const currentYear = new Date().getFullYear().toString();
 
   const form = useForm<EntryFormData>({
@@ -152,6 +162,41 @@ export default function FinancialOverview() {
   const getProjectedEntries = () => entries.filter(e => e.isProjected === "true");
   const getActualEntries = () => entries.filter(e => e.isProjected === "false");
 
+  // Get entries filtered by selected quarter
+  const getQuarterMonths = (quarter: QuarterType) => {
+    const q = QUARTERS.find(q => q.name === quarter);
+    return q ? q.months : [];
+  };
+
+  const filterEntriesByQuarter = (entriesToFilter: FinancialEntry[], quarter: QuarterType) => {
+    const months = getQuarterMonths(quarter);
+    return entriesToFilter.filter(entry => {
+      const entryMonth = new Date(entry.date).getMonth() + 1;
+      return months.includes(entryMonth);
+    });
+  };
+
+  const getQuarterIncomeEntries = () => filterEntriesByQuarter(getIncomeEntries(), selectedQuarter);
+  const getQuarterExpenseEntries = () => filterEntriesByQuarter(getExpenseEntries(), selectedQuarter);
+
+  // Navigation functions for carousel
+  const goToPreviousQuarter = () => {
+    const currentIndex = QUARTERS.findIndex(q => q.name === selectedQuarter);
+    const prevIndex = currentIndex > 0 ? currentIndex - 1 : QUARTERS.length - 1;
+    setSelectedQuarter(QUARTERS[prevIndex].name);
+  };
+
+  const goToNextQuarter = () => {
+    const currentIndex = QUARTERS.findIndex(q => q.name === selectedQuarter);
+    const nextIndex = currentIndex < QUARTERS.length - 1 ? currentIndex + 1 : 0;
+    setSelectedQuarter(QUARTERS[nextIndex].name);
+  };
+
+  const getQuarterLabel = () => {
+    const q = QUARTERS.find(q => q.name === selectedQuarter);
+    return q ? q.label : '';
+  };
+
   // Prepare chart data
   const prepareMonthlyTrendData = () => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -177,6 +222,95 @@ export default function FinancialOverview() {
         balance: income - expenses
       };
     });
+  };
+
+  // Prepare quarterly chart data (only months in selected quarter)
+  const prepareQuarterlyMonthlyTrendData = () => {
+    const allMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const quarterMonths = getQuarterMonths(selectedQuarter);
+    
+    return quarterMonths.map(monthNum => {
+      const month = allMonths[monthNum - 1];
+      const monthEntries = entries.filter(entry => {
+        const entryMonth = new Date(entry.date).getMonth() + 1;
+        return entryMonth === monthNum;
+      });
+      
+      const income = monthEntries
+        .filter(e => e.type === 'income')
+        .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+      
+      const expenses = monthEntries
+        .filter(e => e.type === 'expense')
+        .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+
+      return {
+        month,
+        income,
+        expenses,
+        balance: income - expenses
+      };
+    });
+  };
+
+  // Prepare category data for selected quarter
+  const prepareQuarterlyCategoryData = () => {
+    const quarterEntries = filterEntriesByQuarter(entries, selectedQuarter);
+    const incomeByCategory: { [key: string]: number } = {};
+    const expenseByCategory: { [key: string]: number } = {};
+
+    quarterEntries.forEach(entry => {
+      if (entry.type === 'income') {
+        incomeByCategory[entry.category] = (incomeByCategory[entry.category] || 0) + parseFloat(entry.amount);
+      } else if (entry.type === 'expense') {
+        expenseByCategory[entry.category] = (expenseByCategory[entry.category] || 0) + parseFloat(entry.amount);
+      }
+    });
+
+    return {
+      income: Object.entries(incomeByCategory).map(([name, value]) => ({ name, value })),
+      expenses: Object.entries(expenseByCategory).map(([name, value]) => ({ name, value }))
+    };
+  };
+
+  // Prepare quarterly projection vs actual data
+  const prepareQuarterlyProjectionVsActualData = () => {
+    const quarterEntries = filterEntriesByQuarter(entries, selectedQuarter);
+    const actualIncome = quarterEntries
+      .filter(e => e.type === 'income')
+      .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+    const actualExpenses = quarterEntries
+      .filter(e => e.type === 'expense')
+      .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+    
+    // Divide yearly projections by 4 for quarterly estimate
+    const projectedIncome = parseFloat(summary?.projectedIncome || '0') / 4;
+    const projectedExpenses = parseFloat(summary?.projectedExpenses || '0') / 4;
+
+    return [
+      {
+        category: 'Income',
+        projected: projectedIncome,
+        actual: actualIncome
+      },
+      {
+        category: 'Expenses', 
+        projected: projectedExpenses,
+        actual: actualExpenses
+      }
+    ];
+  };
+
+  // Get quarterly totals for header display
+  const getQuarterlyTotals = () => {
+    const quarterEntries = filterEntriesByQuarter(entries, selectedQuarter);
+    const income = quarterEntries
+      .filter(e => e.type === 'income')
+      .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+    const expenses = quarterEntries
+      .filter(e => e.type === 'expense')
+      .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+    return { income, expenses, net: income - expenses };
   };
 
   const prepareCategoryData = () => {
@@ -572,341 +706,450 @@ export default function FinancialOverview() {
         </AccordionItem>
       </Accordion>
 
-      {/* Detailed View */}
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="income">Income</TabsTrigger>
-          <TabsTrigger value="expenses">Expenses</TabsTrigger>
-          <TabsTrigger value="projections">Projections</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-4">
-          {/* Financial Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Monthly Trends Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <LineChart className="h-5 w-5 text-blue-600" />
-                  Monthly Financial Trends
-                </CardTitle>
-                <CardDescription>
-                  Income vs Expenses trend throughout the year
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <RechartsLineChart data={prepareMonthlyTrendData()}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => [`NAD ${value.toLocaleString()}`, '']} />
-                    <Legend />
-                    <Line 
-                      type="monotone" 
-                      dataKey="income" 
-                      stroke="#10B981" 
-                      strokeWidth={3}
-                      name="Income"
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="expenses" 
-                      stroke="#EF4444" 
-                      strokeWidth={3}
-                      name="Expenses"
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="balance" 
-                      stroke="#3B82F6" 
-                      strokeWidth={2}
-                      strokeDasharray="5 5"
-                      name="Net Balance"
-                    />
-                  </RechartsLineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            {/* Projected vs Actual Comparison */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-green-600" />
-                  Projected vs Actual
-                </CardTitle>
-                <CardDescription>
-                  How we're performing against projections
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={prepareProjectionVsActualData()}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="category" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => [`NAD ${value.toLocaleString()}`, '']} />
-                    <Legend />
-                    <Bar dataKey="projected" fill="#94A3B8" name="Projected" />
-                    <Bar dataKey="actual" fill="#10B981" name="Actual" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Category Breakdown Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Income Categories */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-green-600" />
-                  Income by Category
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <PieChart>
-                    <Pie
-                      data={prepareCategoryData().income}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {prepareCategoryData().income.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => [`NAD ${value.toLocaleString()}`, 'Amount']} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            {/* Expense Categories */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingDown className="h-5 w-5 text-red-600" />
-                  Expenses by Category
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <PieChart>
-                    <Pie
-                      data={prepareCategoryData().expenses}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {prepareCategoryData().expenses.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => [`NAD ${value.toLocaleString()}`, 'Amount']} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <TrendingUp className="h-5 w-5 text-green-600" />
-                  <span>Recent Income</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {getIncomeEntries().slice(0, 5).map((entry) => (
-                    <div key={entry.id} className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium text-sm">{entry.description}</p>
-                        <p className="text-xs text-muted-foreground">{entry.category}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-green-600">
-                          {formatCurrency(entry.amount, entry.currency)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(entry.date), "MMM d")}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  {getIncomeEntries().length === 0 && (
-                    <p className="text-muted-foreground text-sm">No income entries yet</p>
-                  )}
+      {/* Detailed View - Collapsible Accordion with Quarterly Carousel */}
+      <Accordion type="single" collapsible defaultValue="details" className="w-full">
+        <AccordionItem value="details" className="border rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden dark:border-gray-700">
+          <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50 dark:hover:bg-gray-700/50" data-testid="accordion-details">
+            <div className="flex items-center justify-between w-full pr-4">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                  <BarChart3 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <TrendingDown className="h-5 w-5 text-red-600" />
-                  <span>Recent Expenses</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {getExpenseEntries().slice(0, 5).map((entry) => (
-                    <div key={entry.id} className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium text-sm">{entry.description}</p>
-                        <p className="text-xs text-muted-foreground">{entry.category}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-red-600">
-                          {formatCurrency(entry.amount, entry.currency)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(entry.date), "MMM d")}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  {getExpenseEntries().length === 0 && (
-                    <p className="text-muted-foreground text-sm">No expense entries yet</p>
-                  )}
+                <div className="text-left">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Financial Details</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Charts, categories & transactions by quarter</p>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
+              </div>
+              <div className="flex items-center space-x-4">
+                <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
+                  {selectedQuarter} ({getQuarterLabel()})
+                </Badge>
+              </div>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-6 pb-6">
+            {/* Quarterly Carousel Navigation */}
+            <div className="flex items-center justify-center space-x-4 mb-6 mt-4">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={goToPreviousQuarter}
+                className="h-10 w-10 rounded-full dark:border-gray-600 dark:hover:bg-gray-700"
+                data-testid="button-prev-quarter"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+              
+              <div className="flex items-center space-x-2">
+                {QUARTERS.map((quarter) => (
+                  <Button
+                    key={quarter.name}
+                    variant={selectedQuarter === quarter.name ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedQuarter(quarter.name)}
+                    className={`min-w-[60px] ${
+                      selectedQuarter === quarter.name 
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                        : 'dark:border-gray-600 dark:hover:bg-gray-700'
+                    }`}
+                    data-testid={`button-${quarter.name.toLowerCase()}`}
+                  >
+                    {quarter.name}
+                  </Button>
+                ))}
+              </div>
 
-        <TabsContent value="income" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Income Entries</CardTitle>
-              <CardDescription>All income transactions for {currentYear}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {getIncomeEntries().map((entry) => (
-                  <div key={entry.id} className="flex justify-between items-center p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">{entry.description}</p>
-                      <p className="text-sm text-muted-foreground">{entry.category}</p>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <Calendar className="h-3 w-3" />
-                        <span className="text-xs">{format(new Date(entry.date), "MMM dd, yyyy")}</span>
-                        {entry.isProjected === "true" && (
-                          <Badge variant="outline" className="text-xs">Projected</Badge>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={goToNextQuarter}
+                className="h-10 w-10 rounded-full dark:border-gray-600 dark:hover:bg-gray-700"
+                data-testid="button-next-quarter"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Quarter Info Bar */}
+            <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 rounded-lg border border-gray-200 dark:border-gray-600">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Quarter</p>
+                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{selectedQuarter}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">{getQuarterLabel()}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Income</p>
+                  <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                    NAD {getQuarterlyTotals().income.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Expenses</p>
+                  <p className="text-lg font-bold text-red-600 dark:text-red-400">
+                    NAD {getQuarterlyTotals().expenses.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Net</p>
+                  <p className={`text-lg font-bold ${getQuarterlyTotals().net >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    NAD {getQuarterlyTotals().net.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Tabs for different views */}
+            <Tabs defaultValue="overview" className="space-y-4">
+              <TabsList className="dark:bg-gray-700">
+                <TabsTrigger value="overview" className="dark:data-[state=active]:bg-gray-600">Overview</TabsTrigger>
+                <TabsTrigger value="income" className="dark:data-[state=active]:bg-gray-600">Income</TabsTrigger>
+                <TabsTrigger value="expenses" className="dark:data-[state=active]:bg-gray-600">Expenses</TabsTrigger>
+                <TabsTrigger value="projections" className="dark:data-[state=active]:bg-gray-600">Projections</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="space-y-4">
+                {/* Financial Charts */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  {/* Monthly Trends Chart for Quarter */}
+                  <Card className="dark:bg-gray-700/50 dark:border-gray-600">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 dark:text-white">
+                        <LineChart className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        {selectedQuarter} Monthly Trends
+                      </CardTitle>
+                      <CardDescription className="dark:text-gray-400">
+                        Income vs Expenses for {getQuarterLabel()}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <RechartsLineChart data={prepareQuarterlyMonthlyTrendData()}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="month" />
+                          <YAxis />
+                          <Tooltip formatter={(value) => [`NAD ${value.toLocaleString()}`, '']} />
+                          <Legend />
+                          <Line 
+                            type="monotone" 
+                            dataKey="income" 
+                            stroke="#10B981" 
+                            strokeWidth={3}
+                            name="Income"
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="expenses" 
+                            stroke="#EF4444" 
+                            strokeWidth={3}
+                            name="Expenses"
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="balance" 
+                            stroke="#3B82F6" 
+                            strokeWidth={2}
+                            strokeDasharray="5 5"
+                            name="Net Balance"
+                          />
+                        </RechartsLineChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+
+                  {/* Projected vs Actual Comparison for Quarter */}
+                  <Card className="dark:bg-gray-700/50 dark:border-gray-600">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 dark:text-white">
+                        <BarChart3 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        {selectedQuarter} Projected vs Actual
+                      </CardTitle>
+                      <CardDescription className="dark:text-gray-400">
+                        Performance against quarterly projections
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={prepareQuarterlyProjectionVsActualData()}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="category" />
+                          <YAxis />
+                          <Tooltip formatter={(value) => [`NAD ${value.toLocaleString()}`, '']} />
+                          <Legend />
+                          <Bar dataKey="projected" fill="#94A3B8" name="Projected" />
+                          <Bar dataKey="actual" fill="#10B981" name="Actual" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Category Breakdown Charts for Quarter */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  {/* Income Categories */}
+                  <Card className="dark:bg-gray-700/50 dark:border-gray-600">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 dark:text-white">
+                        <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        {selectedQuarter} Income by Category
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {prepareQuarterlyCategoryData().income.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={250}>
+                          <PieChart>
+                            <Pie
+                              data={prepareQuarterlyCategoryData().income}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {prepareQuarterlyCategoryData().income.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip formatter={(value) => [`NAD ${value.toLocaleString()}`, 'Amount']} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex items-center justify-center h-[250px] text-gray-500 dark:text-gray-400">
+                          No income data for {selectedQuarter}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Expense Categories */}
+                  <Card className="dark:bg-gray-700/50 dark:border-gray-600">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 dark:text-white">
+                        <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+                        {selectedQuarter} Expenses by Category
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {prepareQuarterlyCategoryData().expenses.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={250}>
+                          <PieChart>
+                            <Pie
+                              data={prepareQuarterlyCategoryData().expenses}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {prepareQuarterlyCategoryData().expenses.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip formatter={(value) => [`NAD ${value.toLocaleString()}`, 'Amount']} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex items-center justify-center h-[250px] text-gray-500 dark:text-gray-400">
+                          No expense data for {selectedQuarter}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                {/* Recent Income/Expenses for Quarter */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card className="dark:bg-gray-700/50 dark:border-gray-600">
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2 dark:text-white">
+                        <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        <span>{selectedQuarter} Income</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {getQuarterIncomeEntries().slice(0, 5).map((entry) => (
+                          <div key={entry.id} className="flex justify-between items-center">
+                            <div>
+                              <p className="font-medium text-sm dark:text-white">{entry.description}</p>
+                              <p className="text-xs text-muted-foreground dark:text-gray-400">{entry.category}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium text-green-600 dark:text-green-400">
+                                {formatCurrency(entry.amount, entry.currency)}
+                              </p>
+                              <p className="text-xs text-muted-foreground dark:text-gray-400">
+                                {format(new Date(entry.date), "MMM d")}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                        {getQuarterIncomeEntries().length === 0 && (
+                          <p className="text-muted-foreground dark:text-gray-400 text-sm">No income entries for {selectedQuarter}</p>
                         )}
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-green-600">
-                        {formatCurrency(entry.amount, entry.currency)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                {getIncomeEntries().length === 0 && (
-                  <div className="text-center py-8">
-                    <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground">No income entries found</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    </CardContent>
+                  </Card>
 
-        <TabsContent value="expenses" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Expense Entries</CardTitle>
-              <CardDescription>All expense transactions for {currentYear}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {getExpenseEntries().map((entry) => (
-                  <div key={entry.id} className="flex justify-between items-center p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">{entry.description}</p>
-                      <p className="text-sm text-muted-foreground">{entry.category}</p>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <Calendar className="h-3 w-3" />
-                        <span className="text-xs">{format(new Date(entry.date), "MMM dd, yyyy")}</span>
-                        {entry.isProjected === "true" && (
-                          <Badge variant="outline" className="text-xs">Projected</Badge>
+                  <Card className="dark:bg-gray-700/50 dark:border-gray-600">
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2 dark:text-white">
+                        <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+                        <span>{selectedQuarter} Expenses</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {getQuarterExpenseEntries().slice(0, 5).map((entry) => (
+                          <div key={entry.id} className="flex justify-between items-center">
+                            <div>
+                              <p className="font-medium text-sm dark:text-white">{entry.description}</p>
+                              <p className="text-xs text-muted-foreground dark:text-gray-400">{entry.category}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium text-red-600 dark:text-red-400">
+                                {formatCurrency(entry.amount, entry.currency)}
+                              </p>
+                              <p className="text-xs text-muted-foreground dark:text-gray-400">
+                                {format(new Date(entry.date), "MMM d")}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                        {getQuarterExpenseEntries().length === 0 && (
+                          <p className="text-muted-foreground dark:text-gray-400 text-sm">No expense entries for {selectedQuarter}</p>
                         )}
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-red-600">
-                        {formatCurrency(entry.amount, entry.currency)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                {getExpenseEntries().length === 0 && (
-                  <div className="text-center py-8">
-                    <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground">No expense entries found</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
 
-        <TabsContent value="projections" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Financial Projections</CardTitle>
-              <CardDescription>Projected income and expenses for the remainder of {currentYear}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {getProjectedEntries().map((entry) => (
-                  <div key={entry.id} className="flex justify-between items-center p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">{entry.description}</p>
-                      <p className="text-sm text-muted-foreground">{entry.category}</p>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <Calendar className="h-3 w-3" />
-                        <span className="text-xs">{format(new Date(entry.date), "MMM dd, yyyy")}</span>
-                        <Badge variant="outline" className="text-xs">Projected</Badge>
-                      </div>
+              <TabsContent value="income" className="space-y-4">
+                <Card className="dark:bg-gray-700/50 dark:border-gray-600">
+                  <CardHeader>
+                    <CardTitle className="dark:text-white">{selectedQuarter} Income Entries</CardTitle>
+                    <CardDescription className="dark:text-gray-400">Income transactions for {getQuarterLabel()}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {getQuarterIncomeEntries().map((entry) => (
+                        <div key={entry.id} className="flex justify-between items-center p-3 border rounded-lg dark:border-gray-600 dark:bg-gray-800/50">
+                          <div>
+                            <p className="font-medium dark:text-white">{entry.description}</p>
+                            <p className="text-sm text-muted-foreground dark:text-gray-400">{entry.category}</p>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <Calendar className="h-3 w-3 dark:text-gray-400" />
+                              <span className="text-xs dark:text-gray-400">{format(new Date(entry.date), "MMM dd, yyyy")}</span>
+                              {entry.isProjected === "true" && (
+                                <Badge variant="outline" className="text-xs dark:border-gray-500">Projected</Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-green-600 dark:text-green-400">
+                              {formatCurrency(entry.amount, entry.currency)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                      {getQuarterIncomeEntries().length === 0 && (
+                        <div className="text-center py-8">
+                          <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground dark:text-gray-500 mb-2" />
+                          <p className="text-muted-foreground dark:text-gray-400">No income entries for {selectedQuarter}</p>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-right">
-                      <p className={`font-bold ${
-                        entry.type === "income" ? "text-blue-600" : "text-orange-600"
-                      }`}>
-                        {formatCurrency(entry.amount, entry.currency)}
-                      </p>
-                      <p className="text-xs capitalize text-muted-foreground">{entry.type}</p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="expenses" className="space-y-4">
+                <Card className="dark:bg-gray-700/50 dark:border-gray-600">
+                  <CardHeader>
+                    <CardTitle className="dark:text-white">{selectedQuarter} Expense Entries</CardTitle>
+                    <CardDescription className="dark:text-gray-400">Expense transactions for {getQuarterLabel()}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {getQuarterExpenseEntries().map((entry) => (
+                        <div key={entry.id} className="flex justify-between items-center p-3 border rounded-lg dark:border-gray-600 dark:bg-gray-800/50">
+                          <div>
+                            <p className="font-medium dark:text-white">{entry.description}</p>
+                            <p className="text-sm text-muted-foreground dark:text-gray-400">{entry.category}</p>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <Calendar className="h-3 w-3 dark:text-gray-400" />
+                              <span className="text-xs dark:text-gray-400">{format(new Date(entry.date), "MMM dd, yyyy")}</span>
+                              {entry.isProjected === "true" && (
+                                <Badge variant="outline" className="text-xs dark:border-gray-500">Projected</Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-red-600 dark:text-red-400">
+                              {formatCurrency(entry.amount, entry.currency)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                      {getQuarterExpenseEntries().length === 0 && (
+                        <div className="text-center py-8">
+                          <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground dark:text-gray-500 mb-2" />
+                          <p className="text-muted-foreground dark:text-gray-400">No expense entries for {selectedQuarter}</p>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
-                {getProjectedEntries().length === 0 && (
-                  <div className="text-center py-8">
-                    <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground">No projected entries found</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="projections" className="space-y-4">
+                <Card className="dark:bg-gray-700/50 dark:border-gray-600">
+                  <CardHeader>
+                    <CardTitle className="dark:text-white">{selectedQuarter} Financial Projections</CardTitle>
+                    <CardDescription className="dark:text-gray-400">Projected income and expenses for {getQuarterLabel()}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {filterEntriesByQuarter(getProjectedEntries(), selectedQuarter).map((entry) => (
+                        <div key={entry.id} className="flex justify-between items-center p-3 border rounded-lg dark:border-gray-600 dark:bg-gray-800/50">
+                          <div>
+                            <p className="font-medium dark:text-white">{entry.description}</p>
+                            <p className="text-sm text-muted-foreground dark:text-gray-400">{entry.category}</p>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <Calendar className="h-3 w-3 dark:text-gray-400" />
+                              <span className="text-xs dark:text-gray-400">{format(new Date(entry.date), "MMM dd, yyyy")}</span>
+                              <Badge variant="outline" className="text-xs dark:border-gray-500">Projected</Badge>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className={`font-bold ${
+                              entry.type === "income" ? "text-blue-600 dark:text-blue-400" : "text-orange-600 dark:text-orange-400"
+                            }`}>
+                              {formatCurrency(entry.amount, entry.currency)}
+                            </p>
+                            <p className="text-xs capitalize text-muted-foreground dark:text-gray-400">{entry.type}</p>
+                          </div>
+                        </div>
+                      ))}
+                      {filterEntriesByQuarter(getProjectedEntries(), selectedQuarter).length === 0 && (
+                        <div className="text-center py-8">
+                          <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground dark:text-gray-500 mb-2" />
+                          <p className="text-muted-foreground dark:text-gray-400">No projected entries for {selectedQuarter}</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   );
 }
