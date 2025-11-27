@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAdmin } from "@/contexts/AdminContext";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -159,7 +160,11 @@ type ProjectedExpenseFormData = z.infer<typeof projectedExpenseSchema>;
 export default function FinancialOverview() {
   const { toast } = useToast();
   const { isAdminMode } = useAdmin();
+  const { user } = useAuth();
   const [location, setLocation] = useLocation();
+  
+  // Check if user can add projected expenses (admin or president)
+  const canAddProjectedExpenses = user?.role === 'admin' || user?.role === 'president';
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isProjectedExpenseDialogOpen, setIsProjectedExpenseDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewModeType>('quarterly');
@@ -205,9 +210,16 @@ export default function FinancialOverview() {
     throwOnError: false,
   });
 
-  // Fetch calendar events for event selector
+  // Fetch calendar events for event selector (filter by selected year)
   const { data: calendarEvents = [] } = useQuery<CalendarEvent[]>({
-    queryKey: ["/api/calendar/events", { year: selectedYear }],
+    queryKey: ["/api/calendar/events", selectedYear],
+    queryFn: async () => {
+      const response = await fetch(`/api/calendar/events?year=${selectedYear}`, {
+        credentials: "include"
+      });
+      if (!response.ok) return [];
+      return response.json();
+    },
     refetchOnWindowFocus: true,
     throwOnError: false,
   });
@@ -305,6 +317,12 @@ export default function FinancialOverview() {
 
   // Handle event selection in projected expense form
   const handleEventSelect = (eventId: string) => {
+    if (eventId === "none") {
+      projectedExpenseForm.setValue('eventId', '');
+      projectedExpenseForm.setValue('eventTitle', '');
+      return;
+    }
+    
     const event = calendarEvents.find(e => e.id === eventId);
     if (event) {
       const eventDate = new Date(event.startDate);
@@ -853,15 +871,14 @@ export default function FinancialOverview() {
         
         {/* Action Buttons */}
         <div className="flex items-center space-x-2 flex-wrap gap-2">
-          {isAdminMode && (
-            <>
-              <Dialog open={isProjectedExpenseDialogOpen} onOpenChange={setIsProjectedExpenseDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" data-testid="button-add-projected-expense">
-                    <Target className="h-4 w-4 mr-2" />
-                    Add Projected Expense
-                  </Button>
-                </DialogTrigger>
+          {canAddProjectedExpenses && (
+            <Dialog open={isProjectedExpenseDialogOpen} onOpenChange={setIsProjectedExpenseDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="bg-orange-50 border-orange-200 hover:bg-orange-100" data-testid="button-add-projected-expense">
+                  <Target className="h-4 w-4 mr-2 text-orange-600" />
+                  Add Projected Expense
+                </Button>
+              </DialogTrigger>
                 <DialogContent className="max-w-lg">
                   <DialogHeader>
                     <DialogTitle>Add Projected Expense</DialogTitle>
@@ -878,14 +895,14 @@ export default function FinancialOverview() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Link to Event (Optional)</FormLabel>
-                            <Select onValueChange={(value) => handleEventSelect(value)} value={field.value || ""}>
+                            <Select onValueChange={(value) => handleEventSelect(value)} value={field.value || "none"}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select an event..." />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">No event (manual entry)</SelectItem>
+                                <SelectItem value="none">No event (manual entry)</SelectItem>
                                 {calendarEvents.map((event) => (
                                   <SelectItem key={event.id} value={event.id}>
                                     {event.title} - {new Date(event.startDate).toLocaleDateString()}
@@ -997,8 +1014,7 @@ export default function FinancialOverview() {
                     </form>
                   </Form>
                 </DialogContent>
-              </Dialog>
-            </>
+            </Dialog>
           )}
           
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
