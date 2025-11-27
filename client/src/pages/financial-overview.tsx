@@ -27,6 +27,7 @@ import {
   TrendingDown, 
   PlusCircle, 
   Calendar,
+  CalendarDays,
   Target,
   AlertCircle,
   Banknote,
@@ -560,6 +561,11 @@ export default function FinancialOverview() {
     ];
   };
 
+  // Calculate total projected event expenses
+  const totalProjectedEventExpenses = projectedExpenses.reduce(
+    (sum, pe) => sum + parseFloat(pe.amount), 0
+  );
+
   // Prepare chart data
   const prepareMonthlyTrendData = () => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -578,10 +584,16 @@ export default function FinancialOverview() {
         .filter(e => e.type === 'expense')
         .reduce((sum, e) => sum + parseFloat(e.amount), 0);
 
+      // Add projected expenses from calendar events
+      const monthProjectedExpenses = projectedExpenses
+        .filter(pe => pe.month === monthNum)
+        .reduce((sum, pe) => sum + parseFloat(pe.amount), 0);
+
       return {
         month,
         income,
         expenses,
+        projectedEventExpenses: monthProjectedExpenses,
         balance: income - expenses
       };
     });
@@ -607,10 +619,16 @@ export default function FinancialOverview() {
         .filter(e => e.type === 'expense')
         .reduce((sum, e) => sum + parseFloat(e.amount), 0);
 
+      // Add projected expenses from calendar events
+      const monthProjectedExpenses = projectedExpenses
+        .filter(pe => pe.month === monthNum)
+        .reduce((sum, pe) => sum + parseFloat(pe.amount), 0);
+
       return {
         month,
         income,
         expenses,
+        projectedEventExpenses: monthProjectedExpenses,
         balance: income - expenses
       };
     });
@@ -734,11 +752,17 @@ export default function FinancialOverview() {
         .filter(e => e.type === 'expense')
         .reduce((sum, e) => sum + parseFloat(e.amount), 0);
 
+      // Add projected expenses from calendar events for this quarter
+      const quarterProjectedExpenses = projectedExpenses
+        .filter(pe => quarter.months.includes(pe.month))
+        .reduce((sum, pe) => sum + parseFloat(pe.amount), 0);
+
       return {
         quarter: quarter.name,
         label: quarter.label,
         income,
         expenses,
+        projectedEventExpenses: quarterProjectedExpenses,
         net: income - expenses,
         transactionCount: quarterEntries.length
       };
@@ -1181,6 +1205,17 @@ export default function FinancialOverview() {
                         NAD {quarter.expenses.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
                       </span>
                     </div>
+                    {quarter.projectedEventExpenses > 0 && (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <CalendarDays className="h-4 w-4 text-orange-500" />
+                          <span className="text-sm text-gray-600 dark:text-gray-300">Event Proj.</span>
+                        </div>
+                        <span className="text-sm font-semibold text-orange-600 dark:text-orange-400">
+                          NAD {quarter.projectedEventExpenses.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    )}
                     <Separator className="dark:bg-gray-600" />
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
@@ -1203,7 +1238,7 @@ export default function FinancialOverview() {
 
             {/* Year Totals Row */}
             <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg border border-gray-200 dark:border-gray-600">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div className="text-center">
                   <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Current Balance</p>
                   <p className="text-xl font-bold text-green-600 dark:text-green-400">
@@ -1232,6 +1267,15 @@ export default function FinancialOverview() {
                   </div>
                 </div>
                 <div className="text-center">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Event Expenses</p>
+                  <p className="text-xl font-bold text-orange-600 dark:text-orange-400">
+                    NAD {totalProjectedEventExpenses.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                  </p>
+                  <div className="flex items-center justify-center text-xs text-gray-400 dark:text-gray-500">
+                    <span>{projectedExpenses.length} calendar events</span>
+                  </div>
+                </div>
+                <div className="text-center">
                   <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Net Result</p>
                   <p className={`text-xl font-bold ${totalYearlyNet >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     NAD {totalYearlyNet.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
@@ -1245,6 +1289,60 @@ export default function FinancialOverview() {
           </AccordionContent>
         </AccordionItem>
       </Accordion>
+
+      {/* Projected Event Expenses Accordion */}
+      {projectedExpenses.length > 0 && (
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="projected-expenses" className="border rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden dark:border-gray-700">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50 dark:hover:bg-gray-700/50" data-testid="accordion-projected-expenses">
+              <div className="flex items-center justify-between w-full pr-4">
+                <div className="flex items-center space-x-4">
+                  <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                    <CalendarDays className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <div className="text-left">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Projected Event Expenses</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{projectedExpenses.length} events for {currentYear}</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <Badge variant="secondary" className="bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300">
+                    NAD {totalProjectedEventExpenses.toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                  </Badge>
+                </div>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-6 pb-6">
+              <div className="space-y-3 mt-4">
+                {projectedExpenses.map((expense) => (
+                  <Card key={expense.id} className="bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600" data-testid={`projected-expense-${expense.id}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2">
+                            <CalendarDays className="h-4 w-4 text-orange-500" />
+                            <span className="font-medium text-gray-900 dark:text-white">{expense.eventTitle || 'General Expense'}</span>
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{expense.description}</p>
+                          <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span>Category: {expense.category}</span>
+                            <span>Date: {format(new Date(expense.expenseDate), "MMM d, yyyy")}</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                            NAD {parseFloat(expense.amount).toLocaleString('en-NA', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      )}
 
       {/* Detailed View - Collapsible Accordion with Time Period Navigation */}
       <Accordion type="single" collapsible defaultValue="details" className="w-full">
