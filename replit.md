@@ -113,6 +113,7 @@ The application is designed for deployment on Replit with the following setup:
 - ✅ **Fixed calendar document processing to detect year from filename (e.g., 'NKF Calendar 2026.pdf' creates 2026 events)**
 - ✅ **Enhanced document status display with processing notes and auto-refresh**
 - ✅ **Dashboard Finances card now shows previous month summary with 5 key figures**
+- ✅ **Simplified projected expense form to manual entry fields: event name, due date, estimated expense (November 27, 2025)**
 - ✅ Ready for deployment at custom subdomain (exco-portal.replit.app requested)
 
 The architecture prioritizes governance functionality, financial transparency, and secure communication while maintaining real-time collaboration capabilities for executive decision-making.
