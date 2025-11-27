@@ -145,14 +145,15 @@ const EXPENSE_CATEGORIES = [
 ];
 
 const projectedExpenseSchema = z.object({
-  eventId: z.string().optional(),
-  eventTitle: z.string().optional(),
-  category: z.string().min(1, "Category is required"),
-  description: z.string().min(1, "Description is required"),
+  eventTitle: z.string().min(1, "Event name is required"),
   amount: z.string().min(1, "Amount is required"),
-  expenseDate: z.string().min(1, "Date is required"),
+  expenseDate: z.string().min(1, "Due date is required"),
   financialYear: z.string(),
   month: z.number(),
+  // Optional fields for compatibility
+  category: z.string().optional(),
+  description: z.string().optional(),
+  eventId: z.string().optional(),
 });
 
 type ProjectedExpenseFormData = z.infer<typeof projectedExpenseSchema>;
@@ -228,14 +229,11 @@ export default function FinancialOverview() {
   const projectedExpenseForm = useForm<ProjectedExpenseFormData>({
     resolver: zodResolver(projectedExpenseSchema),
     defaultValues: {
-      eventId: "",
       eventTitle: "",
-      category: "",
-      description: "",
       amount: "",
-      expenseDate: "",
+      expenseDate: new Date().toISOString().split('T')[0],
       financialYear: currentYear,
-      month: 1,
+      month: new Date().getMonth() + 1,
     },
   });
 
@@ -314,25 +312,6 @@ export default function FinancialOverview() {
       });
     },
   });
-
-  // Handle event selection in projected expense form
-  const handleEventSelect = (eventId: string) => {
-    if (eventId === "none") {
-      projectedExpenseForm.setValue('eventId', '');
-      projectedExpenseForm.setValue('eventTitle', '');
-      return;
-    }
-    
-    const event = calendarEvents.find(e => e.id === eventId);
-    if (event) {
-      const eventDate = new Date(event.startDate);
-      projectedExpenseForm.setValue('eventId', eventId);
-      projectedExpenseForm.setValue('eventTitle', event.title);
-      projectedExpenseForm.setValue('expenseDate', eventDate.toISOString().split('T')[0]);
-      projectedExpenseForm.setValue('month', eventDate.getMonth() + 1);
-      projectedExpenseForm.setValue('financialYear', eventDate.getFullYear().toString());
-    }
-  };
 
   // Get projected expenses by view mode
   const getViewModeProjectedExpenses = () => {
@@ -888,128 +867,58 @@ export default function FinancialOverview() {
                   </DialogHeader>
                   <Form {...projectedExpenseForm}>
                     <form onSubmit={projectedExpenseForm.handleSubmit(data => createProjectedExpenseMutation.mutate(data))} className="space-y-4">
-                      {/* Event Selector */}
+                      {/* Event Name */}
                       <FormField
                         control={projectedExpenseForm.control}
-                        name="eventId"
+                        name="eventTitle"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Link to Event (Optional)</FormLabel>
-                            <Select onValueChange={(value) => handleEventSelect(value)} value={field.value || "none"}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select an event..." />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="none">No event (manual entry)</SelectItem>
-                                {calendarEvents.map((event) => (
-                                  <SelectItem key={event.id} value={event.id}>
-                                    {event.title} - {new Date(event.startDate).toLocaleDateString()}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        {/* Category */}
-                        <FormField
-                          control={projectedExpenseForm.control}
-                          name="category"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Category</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select category" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {EXPENSE_CATEGORIES.map(cat => (
-                                    <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        {/* Amount */}
-                        <FormField
-                          control={projectedExpenseForm.control}
-                          name="amount"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Amount (NAD)</FormLabel>
-                              <FormControl>
-                                <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      
-                      {/* Description */}
-                      <FormField
-                        control={projectedExpenseForm.control}
-                        name="description"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Description</FormLabel>
+                            <FormLabel>Event Name</FormLabel>
                             <FormControl>
-                              <Textarea placeholder="Describe the expected expense..." {...field} />
+                              <Input placeholder="e.g., Commonwealth Championships, Regional Tournament" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
                       
-                      <div className="grid grid-cols-2 gap-4">
-                        {/* Date */}
-                        <FormField
-                          control={projectedExpenseForm.control}
-                          name="expenseDate"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Expected Date</FormLabel>
-                              <FormControl>
-                                <Input type="date" {...field} onChange={(e) => {
-                                  field.onChange(e);
-                                  const date = new Date(e.target.value);
-                                  projectedExpenseForm.setValue('month', date.getMonth() + 1);
-                                  projectedExpenseForm.setValue('financialYear', date.getFullYear().toString());
-                                }} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        {/* Year (auto-filled) */}
-                        <FormField
-                          control={projectedExpenseForm.control}
-                          name="financialYear"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Financial Year</FormLabel>
-                              <FormControl>
-                                <Input {...field} readOnly className="bg-gray-50" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                      {/* Due Date */}
+                      <FormField
+                        control={projectedExpenseForm.control}
+                        name="expenseDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Due Date</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} onChange={(e) => {
+                                field.onChange(e);
+                                const date = new Date(e.target.value);
+                                projectedExpenseForm.setValue('month', date.getMonth() + 1);
+                                projectedExpenseForm.setValue('financialYear', date.getFullYear().toString());
+                              }} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       
-                      <Button type="submit" className="w-full" disabled={createProjectedExpenseMutation.isPending}>
-                        {createProjectedExpenseMutation.isPending ? "Adding..." : "Add Projected Expense"}
+                      {/* Estimated Expense */}
+                      <FormField
+                        control={projectedExpenseForm.control}
+                        name="amount"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Estimated Expense (NAD)</FormLabel>
+                            <FormControl>
+                              <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <Button type="submit" className="w-full bg-orange-600 hover:bg-orange-700 text-white" disabled={createProjectedExpenseMutation.isPending}>
+                        {createProjectedExpenseMutation.isPending ? "Adding..." : "Add Expense"}
                       </Button>
                     </form>
                   </Form>
