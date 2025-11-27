@@ -102,15 +102,70 @@ const MONTHS: { num: MonthType; name: string; short: string }[] = [
   { num: 12, name: 'December', short: 'Dec' }
 ];
 
+interface ProjectedExpense {
+  id: string;
+  eventId: string | null;
+  eventTitle: string | null;
+  category: string;
+  description: string;
+  amount: string;
+  currency: string;
+  expenseDate: string;
+  financialYear: string;
+  month: number;
+  quarter: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface CalendarEvent {
+  id: string;
+  title: string;
+  startDate: string;
+  endDate: string | null;
+  eventType: string;
+  location: string | null;
+}
+
+const EXPENSE_CATEGORIES = [
+  { value: 'travel', label: 'Travel' },
+  { value: 'accommodation', label: 'Accommodation' },
+  { value: 'registration', label: 'Registration Fees' },
+  { value: 'equipment', label: 'Equipment' },
+  { value: 'meals', label: 'Meals & Catering' },
+  { value: 'transport', label: 'Transport' },
+  { value: 'venue', label: 'Venue Rental' },
+  { value: 'officials', label: 'Officials & Judges' },
+  { value: 'marketing', label: 'Marketing & Promotion' },
+  { value: 'admin', label: 'Administrative' },
+  { value: 'other', label: 'Other' },
+];
+
+const projectedExpenseSchema = z.object({
+  eventId: z.string().optional(),
+  eventTitle: z.string().optional(),
+  category: z.string().min(1, "Category is required"),
+  description: z.string().min(1, "Description is required"),
+  amount: z.string().min(1, "Amount is required"),
+  expenseDate: z.string().min(1, "Date is required"),
+  financialYear: z.string(),
+  month: z.number(),
+});
+
+type ProjectedExpenseFormData = z.infer<typeof projectedExpenseSchema>;
+
 export default function FinancialOverview() {
   const { toast } = useToast();
   const { isAdminMode } = useAdmin();
   const [location, setLocation] = useLocation();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isProjectedExpenseDialogOpen, setIsProjectedExpenseDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewModeType>('quarterly');
   const [selectedQuarter, setSelectedQuarter] = useState<QuarterType>('Q1');
   const [selectedMonth, setSelectedMonth] = useState<MonthType>(1);
-  const currentYear = new Date().getFullYear().toString();
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const currentYear = selectedYear.toString();
 
   const form = useForm<EntryFormData>({
     resolver: zodResolver(entrySchema),
@@ -142,6 +197,44 @@ export default function FinancialOverview() {
   // Check if data comes from bank statements
   const hasBankStatementData = entries.some(entry => entry.createdBy === 'bank-statement');
 
+  // Fetch projected expenses for selected year
+  const { data: projectedExpenses = [] } = useQuery<ProjectedExpense[]>({
+    queryKey: ["/api/financial/projected-expenses", currentYear],
+    refetchOnWindowFocus: true,
+    throwOnError: false,
+  });
+
+  // Fetch calendar events for event selector
+  const { data: calendarEvents = [] } = useQuery<CalendarEvent[]>({
+    queryKey: ["/api/calendar/events", { year: selectedYear }],
+    refetchOnWindowFocus: true,
+    throwOnError: false,
+  });
+
+  // Projected expense form
+  const projectedExpenseForm = useForm<ProjectedExpenseFormData>({
+    resolver: zodResolver(projectedExpenseSchema),
+    defaultValues: {
+      eventId: "",
+      eventTitle: "",
+      category: "",
+      description: "",
+      amount: "",
+      expenseDate: "",
+      financialYear: currentYear,
+      month: 1,
+    },
+  });
+
+  // Year navigation functions
+  const goToPreviousYear = () => {
+    setSelectedYear(prev => prev - 1);
+  };
+
+  const goToNextYear = () => {
+    setSelectedYear(prev => prev + 1);
+  };
+
   // Create entry mutation
   const createEntryMutation = useMutation({
     mutationFn: async (data: EntryFormData) => {
@@ -164,6 +257,84 @@ export default function FinancialOverview() {
       });
     },
   });
+
+  // Create projected expense mutation
+  const createProjectedExpenseMutation = useMutation({
+    mutationFn: async (data: ProjectedExpenseFormData) => {
+      return await apiRequest(`/api/financial/projected-expenses`, 'POST', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/financial/projected-expenses"] });
+      setIsProjectedExpenseDialogOpen(false);
+      projectedExpenseForm.reset();
+      toast({
+        title: "Projected expense added",
+        description: "Projected expense has been created successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create projected expense",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete projected expense mutation
+  const deleteProjectedExpenseMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest(`/api/financial/projected-expenses/${id}`, 'DELETE');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/financial/projected-expenses"] });
+      toast({
+        title: "Expense deleted",
+        description: "Projected expense has been removed",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete projected expense",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle event selection in projected expense form
+  const handleEventSelect = (eventId: string) => {
+    const event = calendarEvents.find(e => e.id === eventId);
+    if (event) {
+      const eventDate = new Date(event.startDate);
+      projectedExpenseForm.setValue('eventId', eventId);
+      projectedExpenseForm.setValue('eventTitle', event.title);
+      projectedExpenseForm.setValue('expenseDate', eventDate.toISOString().split('T')[0]);
+      projectedExpenseForm.setValue('month', eventDate.getMonth() + 1);
+      projectedExpenseForm.setValue('financialYear', eventDate.getFullYear().toString());
+    }
+  };
+
+  // Get projected expenses by view mode
+  const getViewModeProjectedExpenses = () => {
+    switch (viewMode) {
+      case 'yearly':
+        return projectedExpenses;
+      case 'quarterly': {
+        const quarterMonths = getQuarterMonths(selectedQuarter);
+        return projectedExpenses.filter(e => quarterMonths.includes(e.month));
+      }
+      case 'monthly':
+        return projectedExpenses.filter(e => e.month === selectedMonth);
+      default:
+        return projectedExpenses;
+    }
+  };
+
+  // Calculate total projected expenses for current view
+  const getTotalProjectedExpenses = () => {
+    return getViewModeProjectedExpenses().reduce((sum, e) => sum + parseFloat(e.amount), 0);
+  };
 
   const formatCurrency = (amount: string, currency = "NAD") => {
     const num = parseFloat(amount);
@@ -622,7 +793,32 @@ export default function FinancialOverview() {
           <div className="flex items-center space-x-2">
             <Banknote className="h-6 w-6 text-green-600" />
             <h1 className="text-2xl font-bold">Financial Overview</h1>
-            <Badge variant="outline">{currentYear}</Badge>
+            
+            {/* Year Navigation */}
+            <div className="flex items-center space-x-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={goToPreviousYear}
+                data-testid="button-prev-year"
+                className="h-8 w-8 p-0"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Badge variant="outline" className="text-lg px-3 py-1" data-testid="badge-current-year">
+                {currentYear}
+              </Badge>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={goToNextYear}
+                data-testid="button-next-year"
+                className="h-8 w-8 p-0"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            
             {hasBankStatementData && (
               <Badge variant="secondary" className="bg-blue-100 text-blue-800">
                 📊 Live Bank Data
@@ -630,21 +826,172 @@ export default function FinancialOverview() {
             )}
           </div>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        
+        {/* Action Buttons */}
+        <div className="flex items-center space-x-2 flex-wrap gap-2">
           {isAdminMode && (
-            <DialogTrigger asChild>
-              <Button data-testid="button-add-entry">
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Add Entry
-              </Button>
-            </DialogTrigger>
+            <>
+              <Dialog open={isProjectedExpenseDialogOpen} onOpenChange={setIsProjectedExpenseDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" data-testid="button-add-projected-expense">
+                    <Target className="h-4 w-4 mr-2" />
+                    Add Projected Expense
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Add Projected Expense</DialogTitle>
+                    <DialogDescription>
+                      Enter a projected/expected expense for an upcoming event or period.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <Form {...projectedExpenseForm}>
+                    <form onSubmit={projectedExpenseForm.handleSubmit(data => createProjectedExpenseMutation.mutate(data))} className="space-y-4">
+                      {/* Event Selector */}
+                      <FormField
+                        control={projectedExpenseForm.control}
+                        name="eventId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Link to Event (Optional)</FormLabel>
+                            <Select onValueChange={(value) => handleEventSelect(value)} value={field.value || ""}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select an event..." />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="">No event (manual entry)</SelectItem>
+                                {calendarEvents.map((event) => (
+                                  <SelectItem key={event.id} value={event.id}>
+                                    {event.title} - {new Date(event.startDate).toLocaleDateString()}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Category */}
+                        <FormField
+                          control={projectedExpenseForm.control}
+                          name="category"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Category</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select category" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {EXPENSE_CATEGORIES.map(cat => (
+                                    <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        {/* Amount */}
+                        <FormField
+                          control={projectedExpenseForm.control}
+                          name="amount"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Amount (NAD)</FormLabel>
+                              <FormControl>
+                                <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      {/* Description */}
+                      <FormField
+                        control={projectedExpenseForm.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                              <Textarea placeholder="Describe the expected expense..." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Date */}
+                        <FormField
+                          control={projectedExpenseForm.control}
+                          name="expenseDate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Expected Date</FormLabel>
+                              <FormControl>
+                                <Input type="date" {...field} onChange={(e) => {
+                                  field.onChange(e);
+                                  const date = new Date(e.target.value);
+                                  projectedExpenseForm.setValue('month', date.getMonth() + 1);
+                                  projectedExpenseForm.setValue('financialYear', date.getFullYear().toString());
+                                }} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        {/* Year (auto-filled) */}
+                        <FormField
+                          control={projectedExpenseForm.control}
+                          name="financialYear"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Financial Year</FormLabel>
+                              <FormControl>
+                                <Input {...field} readOnly className="bg-gray-50" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <Button type="submit" className="w-full" disabled={createProjectedExpenseMutation.isPending}>
+                        {createProjectedExpenseMutation.isPending ? "Adding..." : "Add Projected Expense"}
+                      </Button>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            </>
           )}
-          {!isAdminMode && (
-            <div className="text-sm text-gray-500 flex items-center">
-              <AlertCircle className="h-4 w-4 mr-2" />
-              Enable admin mode to add entries
-            </div>
-          )}
+          
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            {isAdminMode && (
+              <DialogTrigger asChild>
+                <Button data-testid="button-add-entry">
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  Add Entry
+                </Button>
+              </DialogTrigger>
+            )}
+            {!isAdminMode && (
+              <div className="text-sm text-gray-500 flex items-center">
+                <AlertCircle className="h-4 w-4 mr-2" />
+                Enable admin mode to add entries
+              </div>
+            )}
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add Financial Entry</DialogTitle>
@@ -766,6 +1113,7 @@ export default function FinancialOverview() {
           </DialogContent>
         </Dialog>
       </div>
+    </div>
 
       <Separator />
 

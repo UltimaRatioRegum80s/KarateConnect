@@ -13,6 +13,7 @@ import {
   bankTransactions,
   calendarEvents,
   calendarDocuments,
+  projectedExpenses,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -32,7 +33,8 @@ import {
   type InsertFinancialEntry,
   type FinancialSummary,
   type InsertFinancialSummary,
-
+  type ProjectedExpense,
+  type InsertProjectedExpense,
   type CalendarEvent,
   type InsertCalendarEvent,
   type CalendarDocument,
@@ -99,6 +101,14 @@ export interface IStorage {
   createBankStatement(data: InsertBankStatement): Promise<BankStatement>;
   updateBankStatement(id: string, data: Partial<InsertBankStatement>): Promise<BankStatement>;
   deleteBankStatement(id: string): Promise<void>;
+
+  // Projected expense operations
+  getProjectedExpenses(financialYear: string): Promise<ProjectedExpense[]>;
+  getProjectedExpensesByQuarter(financialYear: string, quarter: string): Promise<ProjectedExpense[]>;
+  getProjectedExpensesByMonth(financialYear: string, month: number): Promise<ProjectedExpense[]>;
+  createProjectedExpense(expense: InsertProjectedExpense): Promise<ProjectedExpense>;
+  updateProjectedExpense(id: string, expense: Partial<InsertProjectedExpense>): Promise<ProjectedExpense>;
+  deleteProjectedExpense(id: string): Promise<void>;
 
   // Statistics
   getRoomStats(roomId: string): Promise<{ memberCount: number; messageCount: number }>;
@@ -682,6 +692,73 @@ export class DatabaseStorage implements IStorage {
       console.warn("Error getting bank statement count (table may not exist yet):", error);
       return 8; // Mock count
     }
+  }
+
+  // Projected expense operations
+  async getProjectedExpenses(financialYear: string): Promise<ProjectedExpense[]> {
+    try {
+      return await db
+        .select()
+        .from(projectedExpenses)
+        .where(eq(projectedExpenses.financialYear, financialYear))
+        .orderBy(projectedExpenses.expenseDate);
+    } catch (error) {
+      console.warn("Error getting projected expenses:", error);
+      return [];
+    }
+  }
+
+  async getProjectedExpensesByQuarter(financialYear: string, quarter: string): Promise<ProjectedExpense[]> {
+    try {
+      return await db
+        .select()
+        .from(projectedExpenses)
+        .where(and(
+          eq(projectedExpenses.financialYear, financialYear),
+          eq(projectedExpenses.quarter, quarter)
+        ))
+        .orderBy(projectedExpenses.expenseDate);
+    } catch (error) {
+      console.warn("Error getting projected expenses by quarter:", error);
+      return [];
+    }
+  }
+
+  async getProjectedExpensesByMonth(financialYear: string, month: number): Promise<ProjectedExpense[]> {
+    try {
+      return await db
+        .select()
+        .from(projectedExpenses)
+        .where(and(
+          eq(projectedExpenses.financialYear, financialYear),
+          eq(projectedExpenses.month, month)
+        ))
+        .orderBy(projectedExpenses.expenseDate);
+    } catch (error) {
+      console.warn("Error getting projected expenses by month:", error);
+      return [];
+    }
+  }
+
+  async createProjectedExpense(expense: InsertProjectedExpense): Promise<ProjectedExpense> {
+    const [newExpense] = await db
+      .insert(projectedExpenses)
+      .values(expense)
+      .returning();
+    return newExpense;
+  }
+
+  async updateProjectedExpense(id: string, expense: Partial<InsertProjectedExpense>): Promise<ProjectedExpense> {
+    const [updated] = await db
+      .update(projectedExpenses)
+      .set({ ...expense, updatedAt: new Date() })
+      .where(eq(projectedExpenses.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteProjectedExpense(id: string): Promise<void> {
+    await db.delete(projectedExpenses).where(eq(projectedExpenses.id, id));
   }
 }
 

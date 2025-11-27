@@ -338,6 +338,33 @@ export type InsertCalendarEvent = typeof calendarEvents.$inferInsert;
 export type CalendarDocument = typeof calendarDocuments.$inferSelect;
 export type InsertCalendarDocument = typeof calendarDocuments.$inferInsert;
 
+// Projected Expenses linked to calendar events
+export const projectedExpenses = pgTable("projected_expenses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").references(() => calendarEvents.id, { onDelete: "set null" }),
+  eventTitle: varchar("event_title"), // Store title in case event is deleted
+  category: varchar("category").notNull(), // travel, accommodation, registration, equipment, meals, transport, other
+  description: varchar("description").notNull(),
+  amount: varchar("amount").notNull(), // stored as string for precision
+  currency: varchar("currency").default("NAD"),
+  expenseDate: timestamp("expense_date").notNull(), // Date of expected expense
+  financialYear: varchar("financial_year").notNull(), // e.g., "2026"
+  month: integer("month").notNull(), // 1-12
+  quarter: varchar("quarter"), // Q1, Q2, Q3, Q4
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertProjectedExpenseSchema = createInsertSchema(projectedExpenses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type ProjectedExpense = typeof projectedExpenses.$inferSelect;
+export type InsertProjectedExpense = z.infer<typeof insertProjectedExpenseSchema>;
+
 // Financial Overview Tables
 export const financialEntries = pgTable("financial_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

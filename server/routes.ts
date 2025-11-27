@@ -888,6 +888,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Projected expenses API routes
+  app.get('/api/financial/projected-expenses/:year', isAuthenticated, async (req: any, res) => {
+    try {
+      const { year } = req.params;
+      const { quarter, month } = req.query;
+      
+      let expenses;
+      if (quarter) {
+        expenses = await storage.getProjectedExpensesByQuarter(year, quarter as string);
+      } else if (month) {
+        expenses = await storage.getProjectedExpensesByMonth(year, parseInt(month as string));
+      } else {
+        expenses = await storage.getProjectedExpenses(year);
+      }
+      
+      res.json(expenses);
+    } catch (error) {
+      console.error("Error fetching projected expenses:", error);
+      res.status(500).json({ message: "Failed to fetch projected expenses" });
+    }
+  });
+
+  app.post('/api/financial/projected-expenses', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { eventId, eventTitle, category, description, amount, currency, expenseDate, financialYear, month } = req.body;
+      
+      // Calculate quarter from month
+      const quarterMap: { [key: number]: string } = {
+        1: 'Q1', 2: 'Q1', 3: 'Q1',
+        4: 'Q2', 5: 'Q2', 6: 'Q2',
+        7: 'Q3', 8: 'Q3', 9: 'Q3',
+        10: 'Q4', 11: 'Q4', 12: 'Q4'
+      };
+      
+      const expenseData = {
+        eventId: eventId || null,
+        eventTitle: eventTitle || null,
+        category,
+        description,
+        amount: String(amount),
+        currency: currency || 'NAD',
+        expenseDate: new Date(expenseDate),
+        financialYear: String(financialYear),
+        month: parseInt(month),
+        quarter: quarterMap[parseInt(month)],
+        createdBy: userId,
+      };
+      
+      const expense = await storage.createProjectedExpense(expenseData);
+      res.status(201).json(expense);
+    } catch (error) {
+      console.error("Error creating projected expense:", error);
+      res.status(500).json({ message: "Failed to create projected expense" });
+    }
+  });
+
+  app.put('/api/financial/projected-expenses/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+      
+      if (updateData.month) {
+        const quarterMap: { [key: number]: string } = {
+          1: 'Q1', 2: 'Q1', 3: 'Q1',
+          4: 'Q2', 5: 'Q2', 6: 'Q2',
+          7: 'Q3', 8: 'Q3', 9: 'Q3',
+          10: 'Q4', 11: 'Q4', 12: 'Q4'
+        };
+        updateData.quarter = quarterMap[parseInt(updateData.month)];
+      }
+      
+      const expense = await storage.updateProjectedExpense(id, updateData);
+      res.json(expense);
+    } catch (error) {
+      console.error("Error updating projected expense:", error);
+      res.status(500).json({ message: "Failed to update projected expense" });
+    }
+  });
+
+  app.delete('/api/financial/projected-expenses/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteProjectedExpense(id);
+      res.json({ success: true, message: 'Projected expense deleted successfully' });
+    } catch (error) {
+      console.error("Error deleting projected expense:", error);
+      res.status(500).json({ message: "Failed to delete projected expense" });
+    }
+  });
+
   // Admin-only middleware
   const isAdmin = async (req: any, res: any, next: any) => {
     try {
