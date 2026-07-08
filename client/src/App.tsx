@@ -14,6 +14,8 @@ import FinancialOverview from "@/pages/financial-overview";
 import BankStatements from "@/pages/bank-statements";
 import Calendar from "@/pages/calendar";
 import AdminPanel from "@/pages/admin-panel";
+import Decisions from "@/pages/decisions";
+import Documents from "@/pages/documents";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -43,6 +45,8 @@ function Router() {
           <Route path="/bank-statements" component={BankStatements} />
           <Route path="/calendar" component={Calendar} />
           <Route path="/admin" component={AdminPanel} />
+          <Route path="/decisions" component={Decisions} />
+          <Route path="/documents" component={Documents} />
         </>
       )}
       <Route component={NotFound} />
