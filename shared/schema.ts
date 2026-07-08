@@ -412,3 +412,6 @@ export type PollOption = typeof pollOptions.$inferSelect;
 export type InsertPollOption = z.infer<typeof insertPollOptionSchema>;
 export type PollVote = typeof pollVotes.$inferSelect;
 export type InsertPollVote = z.infer<typeof insertPollVoteSchema>;
+
+// Export governance schema
+export * from "./governance-schema";
